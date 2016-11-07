@@ -11,6 +11,21 @@ type RommyStruct interface {
 	Schema() *StructSchema
 }
 
+func isDefaultValue(o reflect.Value, schema TypeSchema) bool {
+	switch schema := schema.(type) {
+	case *StringSchema:
+		return o.String() == ""
+	case *IntegerSchema:
+		return o.Int() == 0
+	case *StructSchema:
+		return false
+	case *ListSchema:
+		return o.Len() == 0
+	default:
+		panic(schema)
+	}
+}
+
 func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 	switch schema := schema.(type) {
 	case *StringSchema:
@@ -26,10 +41,12 @@ func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 		out.EndOfLine()
 		out.Indent()
 		for _, f := range schema.Fields {
-			// TODO elide zero values.
+			child := o.FieldByName(f.GoName())
+			if isDefaultValue(child, f.Type) {
+				continue
+			}
 			out.WriteString(f.Name)
 			out.WriteString(": ")
-			child := o.FieldByName(f.GoName())
 			dumpStruct(child, f.Type, out)
 			out.WriteString(",")
 			out.EndOfLine()

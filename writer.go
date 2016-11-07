@@ -34,6 +34,20 @@ func isSimple(expr Expr) bool {
 	}
 }
 
+func isDefault(expr Expr) bool {
+	switch expr := expr.(type) {
+	case *String:
+		return expr.Value == ""
+	case *Integer:
+		// HACK
+		return expr.Raw.Text == "0"
+	case *Struct:
+		return false
+	default:
+		panic(expr)
+	}
+}
+
 func writeExpr(expr Expr, out *writer.TabbedWriter) {
 	switch expr := expr.(type) {
 	case *String:
@@ -88,6 +102,9 @@ func writeExpr(expr Expr, out *writer.TabbedWriter) {
 			out.EndOfLine()
 			out.Indent()
 			for _, arg := range expr.Args {
+				if isDefault(arg.Value) {
+					continue
+				}
 				out.WriteString(arg.Name.Text)
 				out.WriteString(": ")
 				writeExpr(arg.Value, out)
