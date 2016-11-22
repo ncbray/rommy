@@ -1,0 +1,24 @@
+Schemas {
+  struct: [
+    {
+      name: "Field",
+      fields: [
+        {name: "name", type: "string"},
+        {name: "type", type: "string"},
+      ],
+    },
+    {
+      name: "Struct",
+      fields: [
+        {name: "name", type: "string"},
+        {name: "fields", type: "[]Field"},
+      ],
+    },
+    {
+      name: "Schemas",
+      fields: [
+        {name: "struct", type: "[]Struct"},
+      ],
+    },
+  ],
+}
