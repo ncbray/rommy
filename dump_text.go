@@ -26,7 +26,7 @@ func isDefaultValue(o reflect.Value, schema TypeSchema) bool {
 	}
 }
 
-func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
+func dumpStruct(o reflect.Value, schema TypeSchema, expected TypeSchema, out *writer.TabbedWriter) {
 	switch schema := schema.(type) {
 	case *StringSchema:
 		// TODO custom string quoting.
@@ -35,9 +35,11 @@ func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 		out.WriteString(strconv.FormatInt(o.Int(), 10))
 	case *StructSchema:
 		o = o.Elem()
-		// TODO elide unneeded names.
-		out.WriteString(schema.Name)
-		out.WriteString(" {")
+		if schema != expected {
+			out.WriteString(schema.Name)
+			out.WriteString(" ")
+		}
+		out.WriteString("{")
 		out.EndOfLine()
 		out.Indent()
 		for _, f := range schema.Fields {
@@ -47,7 +49,7 @@ func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 			}
 			out.WriteString(f.Name)
 			out.WriteString(": ")
-			dumpStruct(child, f.Type, out)
+			dumpStruct(child, f.Type, f.Type, out)
 			out.WriteString(",")
 			out.EndOfLine()
 		}
@@ -59,7 +61,7 @@ func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 		out.Indent()
 		for i := 0; i < o.Len(); i++ {
 			child := o.Index(i)
-			dumpStruct(child, schema.Element, out)
+			dumpStruct(child, schema.Element, schema.Element, out)
 			out.WriteString(",")
 			out.EndOfLine()
 		}
@@ -72,6 +74,6 @@ func dumpStruct(o reflect.Value, schema TypeSchema, out *writer.TabbedWriter) {
 
 func DumpText(s RommyStruct, w io.Writer) {
 	out := writer.MakeTabbedWriter("  ", w)
-	dumpStruct(reflect.ValueOf(s), s.Schema(), out)
+	dumpStruct(reflect.ValueOf(s), s.Schema(), nil, out)
 	out.EndOfLine()
 }
