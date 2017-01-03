@@ -4,34 +4,6 @@ import (
 	"github.com/ncbray/compilerutil/names"
 )
 
-type Namespace struct {
-	types map[string]TypeSchema
-}
-
-func (ns *Namespace) Get(name string) (TypeSchema, bool) {
-	t, ok := ns.types[name]
-	return t, ok
-}
-
-func (ns *Namespace) set(name string, t TypeSchema) {
-	if ns.types == nil {
-		ns.types = map[string]TypeSchema{}
-	}
-	ns.types[name] = t
-}
-
-func (ns *Namespace) Register(t TypeSchema) {
-	var name string
-	switch t := t.(type) {
-	case *StructSchema:
-		t.Init()
-		name = t.Name
-	default:
-		panic(t)
-	}
-	ns.set(name, t)
-}
-
 type TypeSchema interface {
 	List() *ListSchema
 	CanHold(other TypeSchema) bool

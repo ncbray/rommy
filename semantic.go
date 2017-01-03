@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func resolveType(namespace *Namespace, node Expr, expected TypeSchema, status *Status) (TypeSchema, bool) {
+func resolveType(region Region, node Expr, expected TypeSchema, status *Status) (TypeSchema, bool) {
 	var loc Location
 	var actual TypeSchema
 	var ok bool
@@ -22,7 +22,8 @@ func resolveType(namespace *Namespace, node Expr, expected TypeSchema, status *S
 		if node.Type != nil {
 			type_name := node.Type.Raw
 			loc = type_name.Loc
-			actual, ok = namespace.Get(type_name.Text)
+			rs := region.Schema()
+			actual, ok = rs.StructLUT[type_name.Text]
 			if !ok {
 				status.Error(type_name.Loc, fmt.Sprintf("cannot resolve type %#v", type_name.Text))
 				return nil, false
@@ -68,8 +69,8 @@ func reflectionType(t TypeSchema) reflect.Type {
 	}
 }
 
-func handleData(namespace *Namespace, node Expr, expected TypeSchema, status *Status) (reflect.Value, bool) {
-	actual, ok := resolveType(namespace, node, expected, status)
+func handleData(region Region, node Expr, expected TypeSchema, status *Status) (reflect.Value, bool) {
+	actual, ok := resolveType(region, node, expected, status)
 	if !ok {
 		return badValue, false
 	}
@@ -108,8 +109,11 @@ func handleData(namespace *Namespace, node Expr, expected TypeSchema, status *St
 			status.Error(node.Loc, fmt.Sprintf("attempted to instantiate type %s as a struct", actual.CanonicalName()))
 			return badValue, false
 		}
-		rt := reflectionType(t)
-		rv := reflect.New(rt.Elem())
+		inst := region.Allocate(t.Name)
+		if inst == nil {
+			panic(inst)
+		}
+		rv := reflect.ValueOf(inst)
 
 		all_ok := true
 		defined := make([]bool, len(t.Fields))
@@ -121,7 +125,7 @@ func handleData(namespace *Namespace, node Expr, expected TypeSchema, status *St
 				} else {
 					defined[f.ID] = true
 				}
-				fv, ok := handleData(namespace, arg.Value, f.Type, status)
+				fv, ok := handleData(region, arg.Value, f.Type, status)
 				if ok {
 					rf := rv.Elem().FieldByName(f.GoName())
 					rf.Set(fv)
@@ -149,7 +153,7 @@ func handleData(namespace *Namespace, node Expr, expected TypeSchema, status *St
 		rv := reflect.MakeSlice(rt, len(node.Args), len(node.Args))
 		all_ok := true
 		for i, arg := range node.Args {
-			fv, ok := handleData(namespace, arg, t.Element, status)
+			fv, ok := handleData(region, arg, t.Element, status)
 			if ok {
 				rf := rv.Index(i)
 				rf.Set(fv)
@@ -167,11 +171,28 @@ func handleData(namespace *Namespace, node Expr, expected TypeSchema, status *St
 	}
 }
 
-func HandleData(namespace *Namespace, node Expr, expected TypeSchema, status *Status) (interface{}, bool) {
-	rv, ok := handleData(namespace, node, expected, status)
+type Region interface {
+	Schema() *RegionSchema
+	Allocate(name string) interface{}
+}
+
+func HandleData(region Region, node Expr, expected TypeSchema, status *Status) (interface{}, bool) {
+	rv, ok := handleData(region, node, expected, status)
 	if ok {
 		return rv.Interface(), true
 	} else {
 		return nil, false
 	}
+}
+
+// This function can be used if there is only one data file to parse.
+func ParseFile(file string, data []byte, region Region) (interface{}, bool) {
+	sources := CreateSourceSet()
+	status := &Status{Sources: sources}
+	info := sources.Add(file, data)
+	e := ParseData(info, data, status)
+	if status.ShouldStop() {
+		return nil, false
+	}
+	return HandleData(region, e, nil, status)
 }

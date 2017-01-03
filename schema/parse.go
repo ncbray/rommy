@@ -4,20 +4,16 @@ import (
 	"github.com/ncbray/rommy"
 )
 
-func ParseSchema(file string, data []byte) (*Schemas, bool) {
-	sources := rommy.CreateSourceSet()
-	status := &rommy.Status{Sources: sources}
+func ParseSchema(file string, data []byte) (*TypeDeclRegion, *Schemas, bool) {
+	region := CreateTypeDeclRegion()
 
-	info := sources.Add(file, data)
-	e := rommy.ParseData(info, data, status)
-	if status.ShouldStop() {
-		return nil, false
-	}
-	result, ok := rommy.HandleData(Namespace, e, nil, status)
+	generic_result, ok := rommy.ParseFile(file, data, region)
 	if !ok {
-		return nil, false
+		return nil, nil, false
 	}
-	schemas, ok := result.(*Schemas)
-	// TODO error handling?
-	return schemas, ok
+	result, ok := generic_result.(*Schemas)
+	if !ok {
+		return nil, nil, false
+	}
+	return region, result, true
 }

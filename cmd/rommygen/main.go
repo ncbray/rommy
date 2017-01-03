@@ -48,6 +48,18 @@ func schemaFieldType(t rommy.TypeSchema) string {
 	}
 }
 
+func regionStructName(r *rommy.RegionSchema) string {
+	return names.JoinCamelCase(names.SplitCamelCase(r.Name+"Region"), true)
+}
+
+func regionSchemaName(r *rommy.RegionSchema) string {
+	return names.JoinCamelCase(names.SplitCamelCase(r.Name+"RegionSchema"), false)
+}
+
+func poolField(r *rommy.RegionSchema, s *rommy.StructSchema) string {
+	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Pool"), true)
+}
+
 func generateStructDecls(r *rommy.RegionSchema, s *rommy.StructSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("type ")
@@ -95,6 +107,115 @@ func generateRegionDecls(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 	for _, s := range r.Structs {
 		generateStructDecls(r, s, out)
 	}
+
+	structName := regionStructName(r)
+	schemaName := regionSchemaName(r)
+
+	out.EndOfLine()
+	out.WriteString("type ")
+	out.WriteString(structName)
+	out.WriteString(" struct {")
+	out.EndOfLine()
+	out.Indent()
+	for _, s := range r.Structs {
+		out.WriteString(poolField(r, s))
+		out.WriteString("[]*")
+		out.WriteString(s.Name)
+		out.EndOfLine()
+	}
+	out.Dedent()
+	out.WriteLine("}")
+
+	out.EndOfLine()
+	out.WriteString("func (r *")
+	out.WriteString(structName)
+	out.WriteString(") Schema() *rommy.RegionSchema {")
+	out.EndOfLine()
+	out.Indent()
+	out.WriteString("return ")
+	out.WriteString(schemaName)
+	out.EndOfLine()
+	out.Dedent()
+	out.WriteLine("}")
+
+	for _, s := range r.Structs {
+		out.EndOfLine()
+		out.WriteString("func (r *")
+		out.WriteString(structName)
+		out.WriteString(") Allocate")
+		out.WriteString(s.Name)
+		out.WriteString("() *")
+		out.WriteString(s.Name)
+		out.WriteString(" {")
+		out.EndOfLine()
+		out.Indent()
+		out.WriteString("o := &")
+		out.WriteString(s.Name)
+		out.WriteString("{}")
+		out.EndOfLine()
+
+		f := poolField(r, s)
+		out.WriteString("r.")
+		out.WriteString(f)
+		out.WriteString(" = append(r.")
+		out.WriteString(f)
+		out.WriteString(", o)")
+		out.EndOfLine()
+
+		out.WriteLine("return o")
+		out.Dedent()
+		out.WriteLine("}")
+	}
+
+	out.EndOfLine()
+	out.WriteString("func (r *")
+	out.WriteString(structName)
+	out.WriteString(") Allocate(name string) interface{} {")
+	out.EndOfLine()
+	out.Indent()
+	out.WriteLine("switch name {")
+	for _, s := range r.Structs {
+		out.WriteString("case ")
+		out.WriteString(strconv.Quote(s.Name))
+		out.WriteString(":")
+		out.EndOfLine()
+		out.Indent()
+		out.WriteString("return r.Allocate")
+		out.WriteString(s.Name)
+		out.WriteString("()")
+		out.EndOfLine()
+		out.Dedent()
+	}
+	out.WriteLine("}")
+	out.WriteLine("return nil")
+	out.Dedent()
+	out.WriteLine("}")
+
+	out.EndOfLine()
+	out.WriteString("func Create")
+	out.WriteString(structName)
+	out.WriteString("() *")
+	out.WriteString(structName)
+	out.WriteString(" {")
+	out.EndOfLine()
+	out.Indent()
+	out.WriteString("return &")
+	out.WriteString(structName)
+	out.WriteString("{}")
+	out.EndOfLine()
+	out.Dedent()
+	out.WriteLine("}")
+
+	out.EndOfLine()
+	out.WriteString("var ")
+	out.WriteString(schemaName)
+	out.WriteString(" = &rommy.RegionSchema{")
+	out.WriteString("Name: ")
+	out.WriteString(strconv.Quote(r.Name))
+	out.WriteString(", GoType: (*")
+	out.WriteString(structName)
+	out.WriteString(")(nil)}")
+	out.EndOfLine()
 }
 
 func generateStructInit(r *rommy.RegionSchema, s *rommy.StructSchema, out *writer.TabbedWriter) {
@@ -116,17 +237,33 @@ func generateStructInit(r *rommy.RegionSchema, s *rommy.StructSchema, out *write
 	}
 	out.Dedent()
 	out.WriteLine("}")
-
-	out.WriteString("Namespace.Register(")
-	out.WriteString(schemaName)
-	out.WriteString(")")
-	out.EndOfLine()
 }
 
 func generateRegionInit(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 	for _, s := range r.Structs {
 		generateStructInit(r, s, out)
 	}
+
+	schemaName := regionSchemaName(r)
+
+	out.EndOfLine()
+	out.WriteString(schemaName)
+	out.WriteString(".Structs = []*rommy.StructSchema{")
+	out.EndOfLine()
+
+	out.Indent()
+	for _, s := range r.Structs {
+		out.WriteString(structSchemaName(s))
+		out.WriteString(",")
+		out.EndOfLine()
+	}
+	out.Dedent()
+	out.WriteLine("}")
+
+	out.WriteString(schemaName)
+	out.WriteString(".Init()")
+	out.EndOfLine()
+
 }
 
 func generateGoSrc(pkg string, regions []*rommy.RegionSchema, out *writer.TabbedWriter) {
@@ -150,12 +287,8 @@ func generateGoSrc(pkg string, regions []*rommy.RegionSchema, out *writer.Tabbed
 
 	// Init
 	out.EndOfLine()
-	out.WriteLine("var Namespace *rommy.Namespace")
-
-	out.EndOfLine()
 	out.WriteLine("func init() {")
 	out.Indent()
-	out.WriteLine("Namespace = &rommy.Namespace{}")
 
 	for _, r := range regions {
 		generateRegionInit(r, out)
@@ -205,7 +338,7 @@ func main() {
 	base := file[0 : len(file)-len(ext)]
 	pkg := filepath.Base(dir)
 
-	result, ok := schema.ParseSchema(input, data)
+	_, result, ok := schema.ParseSchema(input, data)
 	if !ok {
 		os.Exit(1)
 	}
