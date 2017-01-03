@@ -28,8 +28,19 @@ func (s *Struct) Schema() *rommy.StructSchema {
 
 var structSchema = &rommy.StructSchema{Name: "Struct", GoType: (*Struct)(nil)}
 
-type Schemas struct {
+type Region struct {
+	Name   string
 	Struct []*Struct
+}
+
+func (s *Region) Schema() *rommy.StructSchema {
+	return regionSchema
+}
+
+var regionSchema = &rommy.StructSchema{Name: "Region", GoType: (*Region)(nil)}
+
+type Schemas struct {
+	Region []*Region
 }
 
 func (s *Schemas) Schema() *rommy.StructSchema {
@@ -55,8 +66,14 @@ func init() {
 	}
 	Namespace.Register(structSchema)
 
-	schemasSchema.Fields = []*rommy.FieldSchema{
+	regionSchema.Fields = []*rommy.FieldSchema{
+		{Name: "name", Type: &rommy.StringSchema{}},
 		{Name: "struct", Type: structSchema.List()},
+	}
+	Namespace.Register(regionSchema)
+
+	schemasSchema.Fields = []*rommy.FieldSchema{
+		{Name: "region", Type: regionSchema.List()},
 	}
 	Namespace.Register(schemasSchema)
 }

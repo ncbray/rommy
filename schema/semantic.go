@@ -17,42 +17,68 @@ func getType(types map[string]rommy.TypeSchema, name string) (rommy.TypeSchema, 
 	return t, ok
 }
 
-func Resolve(schemas *Schemas) []*rommy.StructSchema {
-	types := map[string]rommy.TypeSchema{
-		"int32":  &rommy.IntegerSchema{},
-		"string": &rommy.StringSchema{},
+func Resolve(schemas *Schemas) []*rommy.RegionSchema {
+	type structWork struct {
+		parsed *Struct
+		built  *rommy.StructSchema
 	}
 
-	struct_list := []*rommy.StructSchema{}
+	type regionWork struct {
+		parsed      *Region
+		built       *rommy.RegionSchema
+		types       map[string]rommy.TypeSchema
+		struct_work []structWork
+	}
+
+	region_work := []regionWork{}
 
 	// Index
-	for _, s := range schemas.Struct {
-		ss := &rommy.StructSchema{
-			Name: s.Name,
+	for _, r := range schemas.Region {
+		rr := &rommy.RegionSchema{
+			Name: r.Name,
 		}
-		struct_list = append(struct_list, ss)
-		types[ss.Name] = ss
+
+		types := map[string]rommy.TypeSchema{
+			"int32":  &rommy.IntegerSchema{},
+			"string": &rommy.StringSchema{},
+		}
+
+		struct_work := []structWork{}
+		for _, s := range r.Struct {
+			ss := &rommy.StructSchema{
+				Name: s.Name,
+			}
+			struct_work = append(struct_work, structWork{parsed: s, built: ss})
+			types[ss.Name] = ss
+			rr.Structs = append(rr.Structs, ss)
+		}
+		region_work = append(region_work, regionWork{parsed: r, built: rr, types: types, struct_work: struct_work})
 	}
 
 	// Resolve types
-	for i, s := range schemas.Struct {
-		ss := struct_list[i]
-		for _, f := range s.Fields {
-			ft, ok := getType(types, f.Type)
-			if !ok {
-				panic(f.Type)
+	for _, rw := range region_work {
+		for _, sw := range rw.struct_work {
+			s := sw.parsed
+			ss := sw.built
+			for _, f := range s.Fields {
+				ft, ok := getType(rw.types, f.Type)
+				if !ok {
+					panic(f.Type)
+				}
+				ss.Fields = append(ss.Fields, &rommy.FieldSchema{
+					Name: f.Name,
+					Type: ft,
+				})
 			}
-			ss.Fields = append(ss.Fields, &rommy.FieldSchema{
-				Name: f.Name,
-				Type: ft,
-			})
 		}
 	}
 
 	// Finalize.
-	for _, ss := range struct_list {
-		ss.Init()
+	region_list := make([]*rommy.RegionSchema, len(region_work))
+	for i, rw := range region_work {
+		rw.built.Init()
+		region_list[i] = rw.built
 	}
 
-	return struct_list
+	return region_list
 }

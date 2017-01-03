@@ -139,3 +139,19 @@ func (s *StructSchema) CanHold(other TypeSchema) bool {
 func (s *StructSchema) CanonicalName() string {
 	return s.Name
 }
+
+type RegionSchema struct {
+	Name      string
+	Structs   []*StructSchema
+	StructLUT map[string]*StructSchema
+	GoType    interface{}
+}
+
+func (r *RegionSchema) Init() *RegionSchema {
+	r.StructLUT = map[string]*StructSchema{}
+	for _, s := range r.Structs {
+		s.Init()
+		r.StructLUT[s.Name] = s
+	}
+	return r
+}
