@@ -336,7 +336,19 @@ func main() {
 	dir, file := filepath.Split(input)
 	ext := filepath.Ext(file)
 	base := file[0 : len(file)-len(ext)]
-	pkg := filepath.Base(dir)
+
+	// Infer the go package from the absolute path.
+	abs_input, err := filepath.Abs(input)
+	if err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
+	abs_dir, _ := filepath.Split(abs_input)
+	pkg := filepath.Base(abs_dir)
+	if pkg == "" || pkg == "." {
+		println("Cannot infer package for file " + abs_input)
+		os.Exit(1)
+	}
 
 	_, result, ok := schema.ParseSchema(input, data)
 	if !ok {
