@@ -1,10 +1,10 @@
 package schema
 
 import (
-	"github.com/ncbray/rommy"
+	"github.com/ncbray/rommy/runtime"
 )
 
-func getType(types map[string]rommy.TypeSchema, name string) (rommy.TypeSchema, bool) {
+func getType(types map[string]runtime.TypeSchema, name string) (runtime.TypeSchema, bool) {
 	if len(name) >= 2 && name[0:2] == "[]" {
 		t, ok := getType(types, name[2:])
 		if ok {
@@ -17,16 +17,16 @@ func getType(types map[string]rommy.TypeSchema, name string) (rommy.TypeSchema, 
 	return t, ok
 }
 
-func Resolve(schemas *Schemas) []*rommy.RegionSchema {
+func Resolve(schemas *Schemas) []*runtime.RegionSchema {
 	type structWork struct {
 		parsed *Struct
-		built  *rommy.StructSchema
+		built  *runtime.StructSchema
 	}
 
 	type regionWork struct {
 		parsed      *Region
-		built       *rommy.RegionSchema
-		types       map[string]rommy.TypeSchema
+		built       *runtime.RegionSchema
+		types       map[string]runtime.TypeSchema
 		struct_work []structWork
 	}
 
@@ -34,18 +34,18 @@ func Resolve(schemas *Schemas) []*rommy.RegionSchema {
 
 	// Index
 	for _, r := range schemas.Region {
-		rr := &rommy.RegionSchema{
+		rr := &runtime.RegionSchema{
 			Name: r.Name,
 		}
 
-		types := map[string]rommy.TypeSchema{
-			"int32":  &rommy.IntegerSchema{},
-			"string": &rommy.StringSchema{},
+		types := map[string]runtime.TypeSchema{
+			"int32":  &runtime.IntegerSchema{},
+			"string": &runtime.StringSchema{},
 		}
 
 		struct_work := []structWork{}
 		for _, s := range r.Struct {
-			ss := &rommy.StructSchema{
+			ss := &runtime.StructSchema{
 				Name: s.Name,
 			}
 			struct_work = append(struct_work, structWork{parsed: s, built: ss})
@@ -65,7 +65,7 @@ func Resolve(schemas *Schemas) []*rommy.RegionSchema {
 				if !ok {
 					panic(f.Type)
 				}
-				ss.Fields = append(ss.Fields, &rommy.FieldSchema{
+				ss.Fields = append(ss.Fields, &runtime.FieldSchema{
 					Name: f.Name,
 					Type: ft,
 				})
@@ -74,7 +74,7 @@ func Resolve(schemas *Schemas) []*rommy.RegionSchema {
 	}
 
 	// Finalize.
-	region_list := make([]*rommy.RegionSchema, len(region_work))
+	region_list := make([]*runtime.RegionSchema, len(region_work))
 	for i, rw := range region_work {
 		rw.built.Init()
 		region_list[i] = rw.built

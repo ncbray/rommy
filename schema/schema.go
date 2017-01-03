@@ -3,7 +3,7 @@ package schema
 /* Generated with rommygen, do not edit by hand. */
 
 import (
-	"github.com/ncbray/rommy"
+	"github.com/ncbray/rommy/runtime"
 )
 
 type Field struct {
@@ -11,43 +11,43 @@ type Field struct {
 	Type string
 }
 
-func (s *Field) Schema() *rommy.StructSchema {
+func (s *Field) Schema() *runtime.StructSchema {
 	return fieldSchema
 }
 
-var fieldSchema = &rommy.StructSchema{Name: "Field", GoType: (*Field)(nil)}
+var fieldSchema = &runtime.StructSchema{Name: "Field", GoType: (*Field)(nil)}
 
 type Struct struct {
 	Name   string
 	Fields []*Field
 }
 
-func (s *Struct) Schema() *rommy.StructSchema {
+func (s *Struct) Schema() *runtime.StructSchema {
 	return structSchema
 }
 
-var structSchema = &rommy.StructSchema{Name: "Struct", GoType: (*Struct)(nil)}
+var structSchema = &runtime.StructSchema{Name: "Struct", GoType: (*Struct)(nil)}
 
 type Region struct {
 	Name   string
 	Struct []*Struct
 }
 
-func (s *Region) Schema() *rommy.StructSchema {
+func (s *Region) Schema() *runtime.StructSchema {
 	return regionSchema
 }
 
-var regionSchema = &rommy.StructSchema{Name: "Region", GoType: (*Region)(nil)}
+var regionSchema = &runtime.StructSchema{Name: "Region", GoType: (*Region)(nil)}
 
 type Schemas struct {
 	Region []*Region
 }
 
-func (s *Schemas) Schema() *rommy.StructSchema {
+func (s *Schemas) Schema() *runtime.StructSchema {
 	return schemasSchema
 }
 
-var schemasSchema = &rommy.StructSchema{Name: "Schemas", GoType: (*Schemas)(nil)}
+var schemasSchema = &runtime.StructSchema{Name: "Schemas", GoType: (*Schemas)(nil)}
 
 type TypeDeclRegion struct {
 	FieldPool   []*Field
@@ -56,7 +56,7 @@ type TypeDeclRegion struct {
 	SchemasPool []*Schemas
 }
 
-func (r *TypeDeclRegion) Schema() *rommy.RegionSchema {
+func (r *TypeDeclRegion) Schema() *runtime.RegionSchema {
 	return typeDeclRegionSchema
 }
 
@@ -102,30 +102,30 @@ func CreateTypeDeclRegion() *TypeDeclRegion {
 	return &TypeDeclRegion{}
 }
 
-var typeDeclRegionSchema = &rommy.RegionSchema{Name: "TypeDecl", GoType: (*TypeDeclRegion)(nil)}
+var typeDeclRegionSchema = &runtime.RegionSchema{Name: "TypeDecl", GoType: (*TypeDeclRegion)(nil)}
 
 func init() {
 
-	fieldSchema.Fields = []*rommy.FieldSchema{
-		{Name: "name", Type: &rommy.StringSchema{}},
-		{Name: "type", Type: &rommy.StringSchema{}},
+	fieldSchema.Fields = []*runtime.FieldSchema{
+		{Name: "name", Type: &runtime.StringSchema{}},
+		{Name: "type", Type: &runtime.StringSchema{}},
 	}
 
-	structSchema.Fields = []*rommy.FieldSchema{
-		{Name: "name", Type: &rommy.StringSchema{}},
+	structSchema.Fields = []*runtime.FieldSchema{
+		{Name: "name", Type: &runtime.StringSchema{}},
 		{Name: "fields", Type: fieldSchema.List()},
 	}
 
-	regionSchema.Fields = []*rommy.FieldSchema{
-		{Name: "name", Type: &rommy.StringSchema{}},
+	regionSchema.Fields = []*runtime.FieldSchema{
+		{Name: "name", Type: &runtime.StringSchema{}},
 		{Name: "struct", Type: structSchema.List()},
 	}
 
-	schemasSchema.Fields = []*rommy.FieldSchema{
+	schemasSchema.Fields = []*runtime.FieldSchema{
 		{Name: "region", Type: regionSchema.List()},
 	}
 
-	typeDeclRegionSchema.Structs = []*rommy.StructSchema{
+	typeDeclRegionSchema.Structs = []*runtime.StructSchema{
 		fieldSchema,
 		structSchema,
 		regionSchema,

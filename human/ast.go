@@ -1,4 +1,4 @@
-package rommy
+package human
 
 type Expr interface {
 	isExpr()

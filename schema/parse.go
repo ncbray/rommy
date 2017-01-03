@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/ncbray/rommy"
+	"github.com/ncbray/rommy/human"
 )
 
 //go:generate rommygen schema.rommy
@@ -9,7 +9,7 @@ import (
 func ParseSchema(file string, data []byte) (*TypeDeclRegion, *Schemas, bool) {
 	region := CreateTypeDeclRegion()
 
-	generic_result, ok := rommy.ParseFile(file, data, region)
+	generic_result, ok := human.ParseFile(file, data, region)
 	if !ok {
 		return nil, nil, false
 	}

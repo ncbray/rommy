@@ -1,23 +1,24 @@
-package rommy
+package human
 
 import (
 	"fmt"
+	"github.com/ncbray/rommy/runtime"
 	"reflect"
 	"strconv"
 )
 
-func resolveType(region Region, node Expr, expected TypeSchema, status *Status) (TypeSchema, bool) {
+func resolveType(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (runtime.TypeSchema, bool) {
 	var loc Location
-	var actual TypeSchema
+	var actual runtime.TypeSchema
 	var ok bool
 
 	switch node := node.(type) {
 	case *String:
 		loc = node.Raw.Loc
-		actual = &StringSchema{}
+		actual = &runtime.StringSchema{}
 	case *Integer:
 		loc = node.Raw.Loc
-		actual = &IntegerSchema{}
+		actual = &runtime.IntegerSchema{}
 	case *Struct:
 		if node.Type != nil {
 			type_name := node.Type.Raw
@@ -58,18 +59,18 @@ func resolveType(region Region, node Expr, expected TypeSchema, status *Status) 
 
 var badValue = reflect.ValueOf(nil)
 
-func reflectionType(t TypeSchema) reflect.Type {
+func reflectionType(t runtime.TypeSchema) reflect.Type {
 	switch t := t.(type) {
-	case *StructSchema:
+	case *runtime.StructSchema:
 		return reflect.TypeOf(t.GoType)
-	case *ListSchema:
+	case *runtime.ListSchema:
 		return reflect.SliceOf(reflectionType(t.Element))
 	default:
 		panic(t)
 	}
 }
 
-func handleData(region Region, node Expr, expected TypeSchema, status *Status) (reflect.Value, bool) {
+func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (reflect.Value, bool) {
 	actual, ok := resolveType(region, node, expected, status)
 	if !ok {
 		return badValue, false
@@ -77,14 +78,14 @@ func handleData(region Region, node Expr, expected TypeSchema, status *Status) (
 
 	switch node := node.(type) {
 	case *String:
-		_, ok := actual.(*StringSchema)
+		_, ok := actual.(*runtime.StringSchema)
 		if !ok {
 			status.Error(node.Raw.Loc, fmt.Sprintf("attempted to instantiate type %s as a string", actual.CanonicalName()))
 			return badValue, false
 		}
 		return reflect.ValueOf(node.Value), true
 	case *Integer:
-		_, ok := actual.(*IntegerSchema)
+		_, ok := actual.(*runtime.IntegerSchema)
 		if !ok {
 			status.Error(node.Raw.Loc, fmt.Sprintf("attempted to instantiate type %s as an int", actual.CanonicalName()))
 			return badValue, false
@@ -104,7 +105,7 @@ func handleData(region Region, node Expr, expected TypeSchema, status *Status) (
 		}
 		return reflect.ValueOf(int32(value)), true
 	case *Struct:
-		t, ok := actual.(*StructSchema)
+		t, ok := actual.(*runtime.StructSchema)
 		if !ok {
 			status.Error(node.Loc, fmt.Sprintf("attempted to instantiate type %s as a struct", actual.CanonicalName()))
 			return badValue, false
@@ -144,7 +145,7 @@ func handleData(region Region, node Expr, expected TypeSchema, status *Status) (
 			return badValue, false
 		}
 	case *List:
-		t, ok := expected.(*ListSchema)
+		t, ok := expected.(*runtime.ListSchema)
 		if !ok {
 			status.Error(node.Loc, fmt.Sprintf("attempted to instantiate type %s as a list", expected.CanonicalName()))
 			return badValue, false
@@ -171,22 +172,22 @@ func handleData(region Region, node Expr, expected TypeSchema, status *Status) (
 	}
 }
 
-type Region interface {
-	Schema() *RegionSchema
-	Allocate(name string) interface{}
-}
-
-func HandleData(region Region, node Expr, expected TypeSchema, status *Status) (interface{}, bool) {
+func HandleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (runtime.Struct, bool) {
 	rv, ok := handleData(region, node, expected, status)
 	if ok {
-		return rv.Interface(), true
+		general := rv.Interface()
+		specific, ok := general.(runtime.Struct)
+		if !ok {
+			panic(general)
+		}
+		return specific, true
 	} else {
 		return nil, false
 	}
 }
 
 // This function can be used if there is only one data file to parse.
-func ParseFile(file string, data []byte, region Region) (interface{}, bool) {
+func ParseFile(file string, data []byte, region runtime.Region) (runtime.Struct, bool) {
 	sources := CreateSourceSet()
 	status := &Status{Sources: sources}
 	info := sources.Add(file, data)

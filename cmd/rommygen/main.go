@@ -5,7 +5,7 @@ import (
 	"github.com/ncbray/compilerutil/fs"
 	"github.com/ncbray/compilerutil/names"
 	"github.com/ncbray/compilerutil/writer"
-	"github.com/ncbray/rommy"
+	"github.com/ncbray/rommy/runtime"
 	"github.com/ncbray/rommy/schema"
 	"go/format"
 	"io/ioutil"
@@ -14,53 +14,53 @@ import (
 	"strconv"
 )
 
-func goTypeRef(t rommy.TypeSchema) string {
+func goTypeRef(t runtime.TypeSchema) string {
 	switch t := t.(type) {
-	case *rommy.IntegerSchema:
+	case *runtime.IntegerSchema:
 		return "int32"
-	case *rommy.StringSchema:
+	case *runtime.StringSchema:
 		return "string"
-	case *rommy.StructSchema:
+	case *runtime.StructSchema:
 		return "*" + t.Name
-	case *rommy.ListSchema:
+	case *runtime.ListSchema:
 		return "[]" + goTypeRef(t.Element)
 	default:
 		panic(t)
 	}
 }
 
-func structSchemaName(s *rommy.StructSchema) string {
+func structSchemaName(s *runtime.StructSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Schema"), false)
 }
 
-func schemaFieldType(t rommy.TypeSchema) string {
+func schemaFieldType(t runtime.TypeSchema) string {
 	switch t := t.(type) {
-	case *rommy.IntegerSchema:
-		return "&rommy.IntegerSchema{}"
-	case *rommy.StringSchema:
-		return "&rommy.StringSchema{}"
-	case *rommy.StructSchema:
+	case *runtime.IntegerSchema:
+		return "&runtime.IntegerSchema{}"
+	case *runtime.StringSchema:
+		return "&runtime.StringSchema{}"
+	case *runtime.StructSchema:
 		return structSchemaName(t)
-	case *rommy.ListSchema:
+	case *runtime.ListSchema:
 		return schemaFieldType(t.Element) + ".List()"
 	default:
 		panic(t)
 	}
 }
 
-func regionStructName(r *rommy.RegionSchema) string {
+func regionStructName(r *runtime.RegionSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(r.Name+"Region"), true)
 }
 
-func regionSchemaName(r *rommy.RegionSchema) string {
+func regionSchemaName(r *runtime.RegionSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(r.Name+"RegionSchema"), false)
 }
 
-func poolField(r *rommy.RegionSchema, s *rommy.StructSchema) string {
+func poolField(r *runtime.RegionSchema, s *runtime.StructSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Pool"), true)
 }
 
-func generateStructDecls(r *rommy.RegionSchema, s *rommy.StructSchema, out *writer.TabbedWriter) {
+func generateStructDecls(r *runtime.RegionSchema, s *runtime.StructSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("type ")
 	out.WriteString(s.Name)
@@ -82,7 +82,7 @@ func generateStructDecls(r *rommy.RegionSchema, s *rommy.StructSchema, out *writ
 	out.EndOfLine()
 	out.WriteString("func (s *")
 	out.WriteString(s.Name)
-	out.WriteString(") Schema() *rommy.StructSchema {")
+	out.WriteString(") Schema() *runtime.StructSchema {")
 	out.EndOfLine()
 	out.Indent()
 	out.WriteString("return ")
@@ -94,7 +94,7 @@ func generateStructDecls(r *rommy.RegionSchema, s *rommy.StructSchema, out *writ
 	out.EndOfLine()
 	out.WriteString("var ")
 	out.WriteString(schemaName)
-	out.WriteString(" = &rommy.StructSchema{")
+	out.WriteString(" = &runtime.StructSchema{")
 	out.WriteString("Name: ")
 	out.WriteString(strconv.Quote(s.Name))
 	out.WriteString(", GoType: (*")
@@ -103,7 +103,7 @@ func generateStructDecls(r *rommy.RegionSchema, s *rommy.StructSchema, out *writ
 	out.EndOfLine()
 }
 
-func generateRegionDecls(r *rommy.RegionSchema, out *writer.TabbedWriter) {
+func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	for _, s := range r.Structs {
 		generateStructDecls(r, s, out)
 	}
@@ -129,7 +129,7 @@ func generateRegionDecls(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("func (r *")
 	out.WriteString(structName)
-	out.WriteString(") Schema() *rommy.RegionSchema {")
+	out.WriteString(") Schema() *runtime.RegionSchema {")
 	out.EndOfLine()
 	out.Indent()
 	out.WriteString("return ")
@@ -209,7 +209,7 @@ func generateRegionDecls(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("var ")
 	out.WriteString(schemaName)
-	out.WriteString(" = &rommy.RegionSchema{")
+	out.WriteString(" = &runtime.RegionSchema{")
 	out.WriteString("Name: ")
 	out.WriteString(strconv.Quote(r.Name))
 	out.WriteString(", GoType: (*")
@@ -218,12 +218,12 @@ func generateRegionDecls(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 }
 
-func generateStructInit(r *rommy.RegionSchema, s *rommy.StructSchema, out *writer.TabbedWriter) {
+func generateStructInit(r *runtime.RegionSchema, s *runtime.StructSchema, out *writer.TabbedWriter) {
 	schemaName := structSchemaName(s)
 
 	out.EndOfLine()
 	out.WriteString(schemaName)
-	out.WriteString(".Fields = []*rommy.FieldSchema{")
+	out.WriteString(".Fields = []*runtime.FieldSchema{")
 	out.EndOfLine()
 
 	out.Indent()
@@ -239,7 +239,7 @@ func generateStructInit(r *rommy.RegionSchema, s *rommy.StructSchema, out *write
 	out.WriteLine("}")
 }
 
-func generateRegionInit(r *rommy.RegionSchema, out *writer.TabbedWriter) {
+func generateRegionInit(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	for _, s := range r.Structs {
 		generateStructInit(r, s, out)
 	}
@@ -248,7 +248,7 @@ func generateRegionInit(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 
 	out.EndOfLine()
 	out.WriteString(schemaName)
-	out.WriteString(".Structs = []*rommy.StructSchema{")
+	out.WriteString(".Structs = []*runtime.StructSchema{")
 	out.EndOfLine()
 
 	out.Indent()
@@ -266,7 +266,7 @@ func generateRegionInit(r *rommy.RegionSchema, out *writer.TabbedWriter) {
 
 }
 
-func generateGoSrc(pkg string, regions []*rommy.RegionSchema, out *writer.TabbedWriter) {
+func generateGoSrc(pkg string, regions []*runtime.RegionSchema, out *writer.TabbedWriter) {
 	// Header
 	out.WriteString("package ")
 	out.WriteString(pkg)
@@ -277,7 +277,7 @@ func generateGoSrc(pkg string, regions []*rommy.RegionSchema, out *writer.Tabbed
 
 	out.WriteLine("import (")
 	out.Indent()
-	out.WriteLine("\"github.com/ncbray/rommy\"")
+	out.WriteLine("\"github.com/ncbray/rommy/runtime\"")
 	out.Dedent()
 	out.WriteLine(")")
 
@@ -354,7 +354,7 @@ func main() {
 	if !ok {
 		os.Exit(1)
 	}
-	//rommy.DumpText(result, os.Stdout)
+	//runtime.DumpText(result, os.Stdout)
 	regions := schema.Resolve(result)
 
 	tmp, err := fs.MakeTempDir("rommygen_")

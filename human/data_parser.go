@@ -1,4 +1,4 @@
-package rommy
+package human
 
 func Punc(state *RuneParserState, value rune) bool {
 	if state.Is(value) {

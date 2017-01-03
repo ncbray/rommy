@@ -1,4 +1,4 @@
-package rommy
+package runtime
 
 import (
 	"github.com/ncbray/compilerutil/names"
@@ -85,7 +85,7 @@ type StructSchema struct {
 	Fields    []*FieldSchema
 	FieldLUT  map[string]*FieldSchema
 	listCache *ListSchema
-	GoType    interface{}
+	GoType    Struct
 }
 
 func (s *StructSchema) Init() *StructSchema {
@@ -116,7 +116,7 @@ type RegionSchema struct {
 	Name      string
 	Structs   []*StructSchema
 	StructLUT map[string]*StructSchema
-	GoType    interface{}
+	GoType    Region
 }
 
 func (r *RegionSchema) Init() *RegionSchema {
