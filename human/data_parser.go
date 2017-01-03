@@ -1,6 +1,10 @@
 package human
 
-func Punc(state *RuneParserState, value rune) bool {
+import (
+	"github.com/ncbray/rommy/parser"
+)
+
+func punc(state *parser.RuneParserState, value rune) bool {
 	if state.Is(value) {
 		state.GetNext()
 		return true
@@ -9,13 +13,13 @@ func Punc(state *RuneParserState, value rune) bool {
 	}
 }
 
-func S(state *RuneParserState) {
+func s(state *parser.RuneParserState) {
 	for state.IsSpace() {
 		state.GetNext()
 	}
 }
 
-func Identifier(state *RuneParserState) (SourceString, bool) {
+func identifier(state *parser.RuneParserState) (parser.SourceString, bool) {
 	if state.IsLetter() || state.Is('_') {
 		begin := state.Position()
 		state.GetNext()
@@ -24,32 +28,32 @@ func Identifier(state *RuneParserState) (SourceString, bool) {
 		}
 		return state.Slice(begin), true
 	} else {
-		return SourceString{}, false
+		return parser.SourceString{}, false
 	}
 }
 
-func ParseKeywordArg(state *RuneParserState) (*KeywordArg, bool) {
-	name, ok := Identifier(state)
+func parseKeywordArg(state *parser.RuneParserState) (*KeywordArg, bool) {
+	name, ok := identifier(state)
 	if !ok {
 		return nil, false
 	}
-	S(state)
+	s(state)
 	if !state.Is(':') {
 		return nil, false
 	}
 	state.GetNext()
-	S(state)
+	s(state)
 
-	expr, ok := ParseExpr(state)
+	expr, ok := parseExpr(state)
 	if !ok {
 		return nil, false
 	}
 	return &KeywordArg{Name: name, Value: expr}, true
 }
 
-func ParseString(state *RuneParserState) (*String, bool) {
+func parseString(state *parser.RuneParserState) (*String, bool) {
 	begin := state.Position()
-	if !Punc(state, '"') {
+	if !punc(state, '"') {
 		return nil, false
 	}
 	value := []rune{}
@@ -72,27 +76,27 @@ func ParseString(state *RuneParserState) (*String, bool) {
 		}
 		value = append(value, current)
 	}
-	if !Punc(state, '"') {
+	if !punc(state, '"') {
 		return nil, false
 	}
 	return &String{Raw: state.Slice(begin), Value: string(value)}, true
 }
 
-func ParseKeywordArgList(state *RuneParserState) ([]*KeywordArg, bool) {
+func parseKeywordArgList(state *parser.RuneParserState) ([]*KeywordArg, bool) {
 	args := []*KeywordArg{}
-	Optional(state, func(state *RuneParserState) bool {
-		arg, ok := ParseKeywordArg(state)
+	parser.Optional(state, func(state *parser.RuneParserState) bool {
+		arg, ok := parseKeywordArg(state)
 		if !ok {
 			return false
 		}
 		args = append(args, arg)
-		Repeat(state, func(state *RuneParserState) bool {
-			S(state)
-			if !Punc(state, ',') {
+		parser.Repeat(state, func(state *parser.RuneParserState) bool {
+			s(state)
+			if !punc(state, ',') {
 				return false
 			}
-			S(state)
-			arg, ok := ParseKeywordArg(state)
+			s(state)
+			arg, ok := parseKeywordArg(state)
 			if !ok {
 				return false
 			}
@@ -100,9 +104,9 @@ func ParseKeywordArgList(state *RuneParserState) ([]*KeywordArg, bool) {
 			return true
 		})
 		// Trailing comma
-		Optional(state, func(state *RuneParserState) bool {
-			S(state)
-			if !Punc(state, ',') {
+		parser.Optional(state, func(state *parser.RuneParserState) bool {
+			s(state)
+			if !punc(state, ',') {
 				return false
 			}
 			return true
@@ -112,11 +116,11 @@ func ParseKeywordArgList(state *RuneParserState) ([]*KeywordArg, bool) {
 	return args, true
 }
 
-func OptionalTypeRef(state *RuneParserState) (*TypeRef, bool) {
-	var name SourceString
+func optionalTypeRef(state *parser.RuneParserState) (*TypeRef, bool) {
+	var name parser.SourceString
 	var ok bool
-	Optional(state, func(state *RuneParserState) bool {
-		name, ok = Identifier(state)
+	parser.Optional(state, func(state *parser.RuneParserState) bool {
+		name, ok = identifier(state)
 		return ok
 	})
 	if ok {
@@ -126,50 +130,50 @@ func OptionalTypeRef(state *RuneParserState) (*TypeRef, bool) {
 	}
 }
 
-func ParseStruct(state *RuneParserState) (*Struct, bool) {
-	t, ok := OptionalTypeRef(state)
+func parseStruct(state *parser.RuneParserState) (*Struct, bool) {
+	t, ok := optionalTypeRef(state)
 	if ok {
-		S(state)
+		s(state)
 	}
 	begin := state.Position()
-	if !Punc(state, '{') {
+	if !punc(state, '{') {
 		return nil, false
 	}
 	loc := state.Slice(begin).Loc
-	S(state)
-	args, ok := ParseKeywordArgList(state)
+	s(state)
+	args, ok := parseKeywordArgList(state)
 	if !ok {
 		return nil, false
 	}
-	S(state)
-	if !Punc(state, '}') {
+	s(state)
+	if !punc(state, '}') {
 		return nil, false
 	}
 	return &Struct{Type: t, Loc: loc, Args: args}, true
 }
 
-func ParseList(state *RuneParserState) (*List, bool) {
+func parseList(state *parser.RuneParserState) (*List, bool) {
 	begin := state.Position()
-	if !Punc(state, '[') {
+	if !punc(state, '[') {
 		return nil, false
 	}
 	loc := state.Slice(begin).Loc
-	S(state)
+	s(state)
 
 	args := []Expr{}
-	Optional(state, func(state *RuneParserState) bool {
-		arg, ok := ParseExpr(state)
+	parser.Optional(state, func(state *parser.RuneParserState) bool {
+		arg, ok := parseExpr(state)
 		if !ok {
 			return false
 		}
 		args = append(args, arg)
-		Repeat(state, func(state *RuneParserState) bool {
-			S(state)
-			if !Punc(state, ',') {
+		parser.Repeat(state, func(state *parser.RuneParserState) bool {
+			s(state)
+			if !punc(state, ',') {
 				return false
 			}
-			S(state)
-			arg, ok := ParseExpr(state)
+			s(state)
+			arg, ok := parseExpr(state)
 			if !ok {
 				return false
 			}
@@ -178,23 +182,23 @@ func ParseList(state *RuneParserState) (*List, bool) {
 		})
 
 		// Trailing comma
-		Optional(state, func(state *RuneParserState) bool {
-			S(state)
-			if !Punc(state, ',') {
+		parser.Optional(state, func(state *parser.RuneParserState) bool {
+			s(state)
+			if !punc(state, ',') {
 				return false
 			}
 			return true
 		})
 		return true
 	})
-	S(state)
-	if !Punc(state, ']') {
+	s(state)
+	if !punc(state, ']') {
 		return nil, false
 	}
 	return &List{Loc: loc, Args: args}, true
 }
 
-func ParseExpr(state *RuneParserState) (Expr, bool) {
+func parseExpr(state *parser.RuneParserState) (Expr, bool) {
 	begin := state.Position()
 	switch {
 	case state.IsDigit():
@@ -204,27 +208,28 @@ func ParseExpr(state *RuneParserState) (Expr, bool) {
 		}
 		return &Integer{Raw: state.Slice(begin)}, true
 	case state.IsLetter() || state.Is('_'):
-		return ParseStruct(state)
+		return parseStruct(state)
 	case state.Is('{'):
-		return ParseStruct(state)
+		return parseStruct(state)
 	case state.Is('"'):
-		return ParseString(state)
+		return parseString(state)
 	case state.Is('['):
-		return ParseList(state)
+		return parseList(state)
 	default:
 		return nil, false
 	}
 }
 
-func ParseData(info *SourceInfo, input []byte, s *Status) Expr {
-	state := CreateRuneParser(info, input)
-	S(state)
-	e, ok := ParseExpr(state)
+// Parse text into an AST.
+func ParseData(info *parser.SourceInfo, input []byte, status *parser.Status) Expr {
+	state := parser.CreateRuneParser(info, input)
+	s(state)
+	e, ok := parseExpr(state)
 	if ok {
-		S(state)
+		s(state)
 	}
 	if !ok || !state.IsEndOfStream() {
-		s.Error(state.Deepest(), "unexpected character")
+		status.Error(state.Deepest(), "unexpected character")
 	}
 	return e
 }

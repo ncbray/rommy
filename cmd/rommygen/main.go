@@ -1,3 +1,4 @@
+// Command rommygen generates Go sources from schema declarations.
 package main
 
 import (

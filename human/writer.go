@@ -119,7 +119,8 @@ func writeExpr(expr Expr, out *writer.TabbedWriter) {
 	}
 }
 
-func Write(expr Expr, w io.Writer) {
+// Convert an AST back to text.
+func WriteData(expr Expr, w io.Writer) {
 	out := writer.MakeTabbedWriter("  ", w)
 	writeExpr(expr, out)
 	out.EndOfLine()

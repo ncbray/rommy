@@ -1,14 +1,16 @@
+// Package human handles human-readable text data files.
 package human
 
 import (
 	"fmt"
+	"github.com/ncbray/rommy/parser"
 	"github.com/ncbray/rommy/runtime"
 	"reflect"
 	"strconv"
 )
 
-func resolveType(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (runtime.TypeSchema, bool) {
-	var loc Location
+func resolveType(region runtime.Region, node Expr, expected runtime.TypeSchema, status *parser.Status) (runtime.TypeSchema, bool) {
+	var loc parser.Location
 	var actual runtime.TypeSchema
 	var ok bool
 
@@ -70,7 +72,7 @@ func reflectionType(t runtime.TypeSchema) reflect.Type {
 	}
 }
 
-func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (reflect.Value, bool) {
+func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *parser.Status) (reflect.Value, bool) {
 	actual, ok := resolveType(region, node, expected, status)
 	if !ok {
 		return badValue, false
@@ -172,7 +174,8 @@ func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, s
 	}
 }
 
-func HandleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *Status) (runtime.Struct, bool) {
+// Convert an AST to a runtime structure.
+func DataToStruct(region runtime.Region, node Expr, expected runtime.TypeSchema, status *parser.Status) (runtime.Struct, bool) {
 	rv, ok := handleData(region, node, expected, status)
 	if ok {
 		general := rv.Interface()
@@ -186,14 +189,14 @@ func HandleData(region runtime.Region, node Expr, expected runtime.TypeSchema, s
 	}
 }
 
-// This function can be used if there is only one data file to parse.
+// Simple interface for parsing a single data file.
 func ParseFile(file string, data []byte, region runtime.Region) (runtime.Struct, bool) {
-	sources := CreateSourceSet()
-	status := &Status{Sources: sources}
+	sources := parser.CreateSourceSet()
+	status := &parser.Status{Sources: sources}
 	info := sources.Add(file, data)
 	e := ParseData(info, data, status)
 	if status.ShouldStop() {
 		return nil, false
 	}
-	return HandleData(region, e, nil, status)
+	return DataToStruct(region, e, nil, status)
 }

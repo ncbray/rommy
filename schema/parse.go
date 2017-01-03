@@ -1,3 +1,4 @@
+// Package schema handles schema declarations.
 package schema
 
 import (

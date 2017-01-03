@@ -1,4 +1,5 @@
-package human
+// Package parser contains common functionality for ad-hoc PEG parsers.
+package parser
 
 import (
 	"fmt"

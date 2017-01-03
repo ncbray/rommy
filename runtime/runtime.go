@@ -1,3 +1,4 @@
+// Package runtime supports code generated from schemas.
 package runtime
 
 type Region interface {
