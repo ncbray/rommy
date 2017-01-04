@@ -4,7 +4,6 @@ package schema
 
 import (
 	"github.com/ncbray/rommy/runtime"
-	"io"
 )
 
 type Field struct {
@@ -107,76 +106,160 @@ func (r *TypeDeclRegion) Allocate(name string) interface{} {
 	return nil
 }
 
-func (r *TypeDeclRegion) Serialize(w io.Writer) error {
+func (r *TypeDeclRegion) MarshalBinary() ([]byte, error) {
+	s := runtime.MakeSerializer()
 	var err error
-	err = runtime.WriteVarUint32(uint32(len(r.FieldPool)), w)
+	err = s.WriteCount(len(r.FieldPool))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = runtime.WriteVarUint32(uint32(len(r.StructPool)), w)
+	err = s.WriteCount(len(r.StructPool))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = runtime.WriteVarUint32(uint32(len(r.RegionPool)), w)
+	err = s.WriteCount(len(r.RegionPool))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = runtime.WriteVarUint32(uint32(len(r.SchemasPool)), w)
+	err = s.WriteCount(len(r.SchemasPool))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, o := range r.FieldPool {
-		runtime.WriteString(o.Name, w)
+		s.WriteString(o.Name)
+		s.WriteString(o.Type)
+	}
+	for _, o := range r.StructPool {
+		s.WriteString(o.Name)
+		err = s.WriteCount(len(o.Fields))
+		if err != nil {
+			return nil, err
+		}
+		for _, o0 := range o.Fields {
+			err = s.WriteIndex(o0.PoolIndex, len(r.FieldPool))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	for _, o := range r.RegionPool {
+		s.WriteString(o.Name)
+		err = s.WriteCount(len(o.Struct))
+		if err != nil {
+			return nil, err
+		}
+		for _, o0 := range o.Struct {
+			err = s.WriteIndex(o0.PoolIndex, len(r.StructPool))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	for _, o := range r.SchemasPool {
+		err = s.WriteCount(len(o.Region))
+		if err != nil {
+			return nil, err
+		}
+		for _, o0 := range o.Region {
+			err = s.WriteIndex(o0.PoolIndex, len(r.RegionPool))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return s.Data(), nil
+}
+
+func (r *TypeDeclRegion) UnmarshalBinary(data []byte) error {
+	d := runtime.MakeDeserializer(data)
+	var index int
+	var err error
+	index, err = d.ReadCount()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < index; i++ {
+		r.AllocateField()
+	}
+	index, err = d.ReadCount()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < index; i++ {
+		r.AllocateStruct()
+	}
+	index, err = d.ReadCount()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < index; i++ {
+		r.AllocateRegion()
+	}
+	index, err = d.ReadCount()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < index; i++ {
+		r.AllocateSchemas()
+	}
+	for _, o := range r.FieldPool {
+		o.Name, err = d.ReadString()
 		if err != nil {
 			return err
 		}
-		runtime.WriteString(o.Type, w)
+		o.Type, err = d.ReadString()
 		if err != nil {
 			return err
 		}
 	}
 	for _, o := range r.StructPool {
-		runtime.WriteString(o.Name, w)
+		o.Name, err = d.ReadString()
 		if err != nil {
 			return err
 		}
-		err = runtime.WriteVarUint32(uint32(len(o.Fields)), w)
+		index, err = d.ReadCount()
 		if err != nil {
 			return err
 		}
-		for _, o0 := range o.Fields {
-			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+		o.Fields = make([]*Field, index)
+		for i0, _ := range o.Fields {
+			index, err = d.ReadIndex(len(r.FieldPool))
 			if err != nil {
 				return err
 			}
+			o.Fields[i0] = r.FieldPool[index]
 		}
 	}
 	for _, o := range r.RegionPool {
-		runtime.WriteString(o.Name, w)
+		o.Name, err = d.ReadString()
 		if err != nil {
 			return err
 		}
-		err = runtime.WriteVarUint32(uint32(len(o.Struct)), w)
+		index, err = d.ReadCount()
 		if err != nil {
 			return err
 		}
-		for _, o0 := range o.Struct {
-			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+		o.Struct = make([]*Struct, index)
+		for i0, _ := range o.Struct {
+			index, err = d.ReadIndex(len(r.StructPool))
 			if err != nil {
 				return err
 			}
+			o.Struct[i0] = r.StructPool[index]
 		}
 	}
 	for _, o := range r.SchemasPool {
-		err = runtime.WriteVarUint32(uint32(len(o.Region)), w)
+		index, err = d.ReadCount()
 		if err != nil {
 			return err
 		}
-		for _, o0 := range o.Region {
-			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+		o.Region = make([]*Region, index)
+		for i0, _ := range o.Region {
+			index, err = d.ReadIndex(len(r.RegionPool))
 			if err != nil {
 				return err
 			}
+			o.Region[i0] = r.RegionPool[index]
 		}
 	}
 	return nil

@@ -67,7 +67,15 @@ func poolField(r *runtime.RegionSchema, s *runtime.StructSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Pool"), true)
 }
 
-func abortOnError(out *writer.TabbedWriter) {
+func abortSerializeOnError(out *writer.TabbedWriter) {
+	out.WriteLine("if err != nil {")
+	out.Indent()
+	out.WriteLine("return nil, err")
+	out.Dedent()
+	out.WriteLine("}")
+}
+
+func abortDeserializeOnError(out *writer.TabbedWriter) {
 	out.WriteLine("if err != nil {")
 	out.Indent()
 	out.WriteLine("return err")
@@ -75,34 +83,34 @@ func abortOnError(out *writer.TabbedWriter) {
 	out.WriteLine("}")
 }
 
-func serialize(path string, level int, t runtime.TypeSchema, out *writer.TabbedWriter) {
+func serialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSchema, out *writer.TabbedWriter) {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
-		out.WriteString("err = runtime.WriteVar")
+		out.WriteString("s.Write")
 		out.WriteString(names.Capitalize(t.CanonicalName()))
 		out.WriteString("(")
 		out.WriteString(path)
-		out.WriteString(", w)")
+		out.WriteString(")")
 		out.EndOfLine()
-		abortOnError(out)
 	case *runtime.StringSchema:
-		out.WriteString("runtime.WriteString(")
+		out.WriteString("s.WriteString(")
 		out.WriteString(path)
-		out.WriteString(", w)")
+		out.WriteString(")")
 		out.EndOfLine()
-		abortOnError(out)
 	case *runtime.StructSchema:
-		out.WriteString("err = runtime.WriteVarUint32(uint32(")
+		out.WriteString("err = s.WriteIndex(")
 		out.WriteString(path)
-		out.WriteString(".PoolIndex), w)")
+		out.WriteString(".PoolIndex, len(r.")
+		out.WriteString(poolField(r, t))
+		out.WriteString("))")
 		out.EndOfLine()
-		abortOnError(out)
+		abortSerializeOnError(out)
 	case *runtime.ListSchema:
-		out.WriteString("err = runtime.WriteVarUint32(uint32(len(")
+		out.WriteString("err = s.WriteCount(len(")
 		out.WriteString(path)
-		out.WriteString(")), w)")
+		out.WriteString("))")
 		out.EndOfLine()
-		abortOnError(out)
+		abortSerializeOnError(out)
 
 		child_path := "o" + strconv.Itoa(level)
 		out.WriteString("for _, ")
@@ -112,7 +120,59 @@ func serialize(path string, level int, t runtime.TypeSchema, out *writer.TabbedW
 		out.WriteString(" {")
 		out.EndOfLine()
 		out.Indent()
-		serialize(child_path, level+1, t.Element, out)
+		serialize(child_path, level+1, r, t.Element, out)
+		out.Dedent()
+		out.WriteLine("}")
+	default:
+		panic(t)
+	}
+}
+
+func deserialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSchema, out *writer.TabbedWriter) {
+	switch t := t.(type) {
+	case *runtime.IntegerSchema:
+		out.WriteString(path)
+		out.WriteString(", err = d.Read")
+		out.WriteString(names.Capitalize(t.CanonicalName()))
+		out.WriteString("()")
+		out.EndOfLine()
+		abortDeserializeOnError(out)
+	case *runtime.StringSchema:
+		out.WriteString(path)
+		out.WriteString(", err = d.ReadString()")
+		out.EndOfLine()
+		abortDeserializeOnError(out)
+	case *runtime.StructSchema:
+		f := poolField(r, t)
+		out.WriteString("index, err = d.ReadIndex(len(r.")
+		out.WriteString(f)
+		out.WriteString("))")
+		out.EndOfLine()
+		abortDeserializeOnError(out)
+
+		out.WriteString(path)
+		out.WriteString(" = r.")
+		out.WriteString(f)
+		out.WriteString("[index]")
+		out.EndOfLine()
+	case *runtime.ListSchema:
+		out.WriteLine("index, err = d.ReadCount()")
+		abortDeserializeOnError(out)
+		out.WriteString(path)
+		out.WriteString(" = make(")
+		out.WriteString(goTypeRef(t))
+		out.WriteString(", index)")
+		out.EndOfLine()
+
+		child_index := "i" + strconv.Itoa(level)
+		out.WriteString("for ")
+		out.WriteString(child_index)
+		out.WriteString(", _ := range ")
+		out.WriteString(path)
+		out.WriteString(" {")
+		out.EndOfLine()
+		out.Indent()
+		deserialize(path+"["+child_index+"]", level+1, r, t.Element, out)
 		out.Dedent()
 		out.WriteLine("}")
 	default:
@@ -265,19 +325,20 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("func (r *")
 	out.WriteString(structName)
-	out.WriteString(") Serialize(w io.Writer) error {")
+	out.WriteString(") MarshalBinary() ([]byte, error) {")
 	out.EndOfLine()
 	out.Indent()
+	out.WriteLine("s := runtime.MakeSerializer()")
 	out.WriteLine("var err error")
 
-	// Counts
+	// indexs
 	for _, s := range r.Structs {
 		f := poolField(r, s)
-		out.WriteString("err = runtime.WriteVarUint32(uint32(len(r.")
+		out.WriteString("err = s.WriteCount(len(r.")
 		out.WriteString(f)
-		out.WriteString(")), w)")
+		out.WriteString("))")
 		out.EndOfLine()
-		abortOnError(out)
+		abortSerializeOnError(out)
 	}
 	// Values
 	for _, s := range r.Structs {
@@ -289,9 +350,53 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 		out.Indent()
 
 		for _, f := range s.Fields {
-			fn := fieldName(f)
-			path := "o." + fn
-			serialize(path, 0, f.Type, out)
+			path := "o." + fieldName(f)
+			serialize(path, 0, r, f.Type, out)
+		}
+		out.Dedent()
+		out.WriteLine("}")
+	}
+	out.WriteLine("return s.Data(), nil")
+	out.Dedent()
+	out.WriteLine("}")
+
+	// Deserializer
+	out.EndOfLine()
+	out.WriteString("func (r *")
+	out.WriteString(structName)
+	out.WriteString(") UnmarshalBinary(data []byte) error {")
+	out.EndOfLine()
+	out.Indent()
+	out.WriteLine("d := runtime.MakeDeserializer(data)")
+	out.WriteLine("var index int")
+	out.WriteLine("var err error")
+
+	// Allocate objects
+	for _, s := range r.Structs {
+		out.WriteLine("index, err = d.ReadCount()")
+		abortDeserializeOnError(out)
+		// TODO allocate exact count.
+		out.WriteLine("for i := 0; i < index; i++ {")
+		out.Indent()
+		out.WriteString("r.Allocate")
+		out.WriteString(s.Name)
+		out.WriteString("()")
+		out.EndOfLine()
+		out.Dedent()
+		out.WriteLine("}")
+	}
+	// Deserialize objects
+	for _, s := range r.Structs {
+		f := poolField(r, s)
+		out.WriteString("for _, o := range r.")
+		out.WriteString(f)
+		out.WriteString(" {")
+		out.EndOfLine()
+		out.Indent()
+
+		for _, f := range s.Fields {
+			path := "o." + fieldName(f)
+			deserialize(path, 0, r, f.Type, out)
 		}
 		out.Dedent()
 		out.WriteLine("}")
@@ -388,7 +493,6 @@ func generateGoSrc(pkg string, regions []*runtime.RegionSchema, out *writer.Tabb
 	out.WriteLine("import (")
 	out.Indent()
 	out.WriteLine("\"github.com/ncbray/rommy/runtime\"")
-	out.WriteLine("\"io\"")
 	out.Dedent()
 	out.WriteLine(")")
 
