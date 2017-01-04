@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ncbray/cmdline"
 	"github.com/ncbray/compilerutil/fs"
 	"github.com/ncbray/compilerutil/names"
@@ -18,7 +19,8 @@ import (
 func goTypeRef(t runtime.TypeSchema) string {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
-		return "int32"
+		// HACK canonical name matches Go type.
+		return t.CanonicalName()
 	case *runtime.StringSchema:
 		return "string"
 	case *runtime.StructSchema:
@@ -37,7 +39,7 @@ func structSchemaName(s *runtime.StructSchema) string {
 func schemaFieldType(t runtime.TypeSchema) string {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
-		return "&runtime.IntegerSchema{}"
+		return fmt.Sprintf("&runtime.IntegerSchema{Bits: %d, Unsigned: %v}", t.Bits, t.Unsigned)
 	case *runtime.StringSchema:
 		return "&runtime.StringSchema{}"
 	case *runtime.StructSchema:

@@ -19,8 +19,15 @@ func resolveType(region runtime.Region, node Expr, expected runtime.TypeSchema, 
 		loc = node.Raw.Loc
 		actual = &runtime.StringSchema{}
 	case *Integer:
+		var bits uint8 = 64
+		unsigned := false
+		e, ok := expected.(*runtime.IntegerSchema)
+		if ok {
+			bits = e.Bits
+			unsigned = e.Unsigned
+		}
 		loc = node.Raw.Loc
-		actual = &runtime.IntegerSchema{}
+		actual = &runtime.IntegerSchema{Bits: bits, Unsigned: unsigned}
 	case *Struct:
 		if node.Type != nil {
 			type_name := node.Type.Raw
@@ -72,6 +79,17 @@ func reflectionType(t runtime.TypeSchema) reflect.Type {
 	}
 }
 
+func handleIntParseError(value parser.SourceString, err error, t *runtime.IntegerSchema, status *parser.Status) {
+	nerr, ok := err.(*strconv.NumError)
+	if !ok {
+		panic(nerr)
+	}
+	if nerr.Err != strconv.ErrRange {
+		panic(err)
+	}
+	status.Error(value.Loc, fmt.Sprintf("%s out of range for an %s", value.Text, t.CanonicalName()))
+}
+
 func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, status *parser.Status) (reflect.Value, bool) {
 	actual, ok := resolveType(region, node, expected, status)
 	if !ok {
@@ -87,25 +105,48 @@ func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, s
 		}
 		return reflect.ValueOf(node.Value), true
 	case *Integer:
-		_, ok := actual.(*runtime.IntegerSchema)
+		t, ok := actual.(*runtime.IntegerSchema)
 		if !ok {
 			status.Error(node.Raw.Loc, fmt.Sprintf("attempted to instantiate type %s as an int", actual.CanonicalName()))
 			return badValue, false
 		}
-		// TODO signedness and bits.
-		value, err := strconv.ParseInt(node.Raw.Text, 0, 32)
-		if err != nil {
-			nerr, ok := err.(*strconv.NumError)
-			if !ok {
-				panic(nerr)
+		if t.Unsigned {
+			value, err := strconv.ParseUint(node.Raw.Text, 0, int(t.Bits))
+			if err != nil {
+				handleIntParseError(node.Raw, err, t, status)
+				return badValue, false
 			}
-			if nerr.Err != strconv.ErrRange {
-				panic(err)
+			switch t.Bits {
+			case 8:
+				return reflect.ValueOf(uint8(value)), true
+			case 16:
+				return reflect.ValueOf(uint16(value)), true
+			case 32:
+				return reflect.ValueOf(uint32(value)), true
+			case 64:
+				return reflect.ValueOf(uint64(value)), true
+			default:
+				panic(t.CanonicalName())
 			}
-			status.Error(node.Raw.Loc, fmt.Sprintf("%s out of range for an int32", node.Raw.Text))
-			return badValue, false
+		} else {
+			value, err := strconv.ParseInt(node.Raw.Text, 0, int(t.Bits))
+			if err != nil {
+				handleIntParseError(node.Raw, err, t, status)
+				return badValue, false
+			}
+			switch t.Bits {
+			case 8:
+				return reflect.ValueOf(int8(value)), true
+			case 16:
+				return reflect.ValueOf(int16(value)), true
+			case 32:
+				return reflect.ValueOf(int32(value)), true
+			case 64:
+				return reflect.ValueOf(int64(value)), true
+			default:
+				panic(t.CanonicalName())
+			}
 		}
-		return reflect.ValueOf(int32(value)), true
 	case *Struct:
 		t, ok := actual.(*runtime.StructSchema)
 		if !ok {

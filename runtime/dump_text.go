@@ -16,7 +16,11 @@ func isDefaultValue(o reflect.Value, schema TypeSchema) bool {
 	case *StringSchema:
 		return o.String() == ""
 	case *IntegerSchema:
-		return o.Int() == 0
+		if schema.Unsigned {
+			return o.Uint() == 0
+		} else {
+			return o.Int() == 0
+		}
 	case *StructSchema:
 		return false
 	case *ListSchema:
@@ -32,7 +36,11 @@ func dumpStruct(o reflect.Value, schema TypeSchema, expected TypeSchema, out *wr
 		// TODO custom string quoting.
 		out.WriteString(strconv.Quote(o.String()))
 	case *IntegerSchema:
-		out.WriteString(strconv.FormatInt(o.Int(), 10))
+		if schema.Unsigned {
+			out.WriteString(strconv.FormatUint(o.Uint(), 10))
+		} else {
+			out.WriteString(strconv.FormatInt(o.Int(), 10))
+		}
 	case *StructSchema:
 		o = o.Elem()
 		if schema != expected {

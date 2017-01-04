@@ -39,8 +39,13 @@ func Resolve(schemas *Schemas) []*runtime.RegionSchema {
 		}
 
 		types := map[string]runtime.TypeSchema{
-			"int32":  &runtime.IntegerSchema{},
 			"string": &runtime.StringSchema{},
+		}
+		for _, unsigned := range []bool{false, true} {
+			for _, bits := range []uint8{8, 16, 32, 64} {
+				t := &runtime.IntegerSchema{Bits: bits, Unsigned: unsigned}
+				types[t.CanonicalName()] = t
+			}
 		}
 
 		struct_work := []structWork{}
@@ -63,7 +68,7 @@ func Resolve(schemas *Schemas) []*runtime.RegionSchema {
 			for _, f := range s.Fields {
 				ft, ok := getType(rw.types, f.Type)
 				if !ok {
-					panic(f.Type)
+					panic("cannot resolve type " + f.Type)
 				}
 				ss.Fields = append(ss.Fields, &runtime.FieldSchema{
 					Name: f.Name,
