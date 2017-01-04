@@ -4,6 +4,7 @@ package schema
 
 import (
 	"github.com/ncbray/rommy/runtime"
+	"io"
 )
 
 type Field struct {
@@ -102,6 +103,81 @@ func (r *TypeDeclRegion) Allocate(name string) interface{} {
 		return r.AllocateRegion()
 	case "Schemas":
 		return r.AllocateSchemas()
+	}
+	return nil
+}
+
+func (r *TypeDeclRegion) Serialize(w io.Writer) error {
+	var err error
+	err = runtime.WriteVarUint32(uint32(len(r.FieldPool)), w)
+	if err != nil {
+		return err
+	}
+	err = runtime.WriteVarUint32(uint32(len(r.StructPool)), w)
+	if err != nil {
+		return err
+	}
+	err = runtime.WriteVarUint32(uint32(len(r.RegionPool)), w)
+	if err != nil {
+		return err
+	}
+	err = runtime.WriteVarUint32(uint32(len(r.SchemasPool)), w)
+	if err != nil {
+		return err
+	}
+	for _, o := range r.FieldPool {
+		runtime.WriteString(o.Name, w)
+		if err != nil {
+			return err
+		}
+		runtime.WriteString(o.Type, w)
+		if err != nil {
+			return err
+		}
+	}
+	for _, o := range r.StructPool {
+		runtime.WriteString(o.Name, w)
+		if err != nil {
+			return err
+		}
+		err = runtime.WriteVarUint32(uint32(len(o.Fields)), w)
+		if err != nil {
+			return err
+		}
+		for _, o0 := range o.Fields {
+			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, o := range r.RegionPool {
+		runtime.WriteString(o.Name, w)
+		if err != nil {
+			return err
+		}
+		err = runtime.WriteVarUint32(uint32(len(o.Struct)), w)
+		if err != nil {
+			return err
+		}
+		for _, o0 := range o.Struct {
+			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, o := range r.SchemasPool {
+		err = runtime.WriteVarUint32(uint32(len(o.Region)), w)
+		if err != nil {
+			return err
+		}
+		for _, o0 := range o.Region {
+			err = runtime.WriteVarUint32(uint32(o0.PoolIndex), w)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

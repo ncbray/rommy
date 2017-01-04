@@ -32,6 +32,10 @@ func goTypeRef(t runtime.TypeSchema) string {
 	}
 }
 
+func fieldName(f *runtime.FieldSchema) string {
+	return names.JoinCamelCase(names.SplitSnakeCase(f.Name), true)
+}
+
 func structSchemaName(s *runtime.StructSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Schema"), false)
 }
@@ -63,6 +67,59 @@ func poolField(r *runtime.RegionSchema, s *runtime.StructSchema) string {
 	return names.JoinCamelCase(names.SplitCamelCase(s.Name+"Pool"), true)
 }
 
+func abortOnError(out *writer.TabbedWriter) {
+	out.WriteLine("if err != nil {")
+	out.Indent()
+	out.WriteLine("return err")
+	out.Dedent()
+	out.WriteLine("}")
+}
+
+func serialize(path string, level int, t runtime.TypeSchema, out *writer.TabbedWriter) {
+	switch t := t.(type) {
+	case *runtime.IntegerSchema:
+		out.WriteString("err = runtime.WriteVar")
+		out.WriteString(names.Capitalize(t.CanonicalName()))
+		out.WriteString("(")
+		out.WriteString(path)
+		out.WriteString(", w)")
+		out.EndOfLine()
+		abortOnError(out)
+	case *runtime.StringSchema:
+		out.WriteString("runtime.WriteString(")
+		out.WriteString(path)
+		out.WriteString(", w)")
+		out.EndOfLine()
+		abortOnError(out)
+	case *runtime.StructSchema:
+		out.WriteString("err = runtime.WriteVarUint32(uint32(")
+		out.WriteString(path)
+		out.WriteString(".PoolIndex), w)")
+		out.EndOfLine()
+		abortOnError(out)
+	case *runtime.ListSchema:
+		out.WriteString("err = runtime.WriteVarUint32(uint32(len(")
+		out.WriteString(path)
+		out.WriteString(")), w)")
+		out.EndOfLine()
+		abortOnError(out)
+
+		child_path := "o" + strconv.Itoa(level)
+		out.WriteString("for _, ")
+		out.WriteString(child_path)
+		out.WriteString(" := range ")
+		out.WriteString(path)
+		out.WriteString(" {")
+		out.EndOfLine()
+		out.Indent()
+		serialize(child_path, level+1, t.Element, out)
+		out.Dedent()
+		out.WriteLine("}")
+	default:
+		panic(t)
+	}
+}
+
 func generateStructDecls(r *runtime.RegionSchema, s *runtime.StructSchema, out *writer.TabbedWriter) {
 	out.EndOfLine()
 	out.WriteString("type ")
@@ -72,7 +129,7 @@ func generateStructDecls(r *runtime.RegionSchema, s *runtime.StructSchema, out *
 	out.Indent()
 	out.WriteLine("PoolIndex int")
 	for _, f := range s.Fields {
-		out.WriteString(names.JoinCamelCase(names.SplitSnakeCase(f.Name), true))
+		out.WriteString(fieldName(f))
 		out.WriteString(" ")
 		out.WriteString(goTypeRef(f.Type))
 		out.EndOfLine()
@@ -130,6 +187,7 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	out.Dedent()
 	out.WriteLine("}")
 
+	// Schema getter.
 	out.EndOfLine()
 	out.WriteString("func (r *")
 	out.WriteString(structName)
@@ -142,6 +200,7 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	out.Dedent()
 	out.WriteLine("}")
 
+	// Concrete child allocators.
 	for _, s := range r.Structs {
 		out.EndOfLine()
 		out.WriteString("func (r *")
@@ -177,6 +236,7 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 		out.WriteLine("}")
 	}
 
+	// Generic child allocator
 	out.EndOfLine()
 	out.WriteString("func (r *")
 	out.WriteString(structName)
@@ -201,6 +261,46 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	out.Dedent()
 	out.WriteLine("}")
 
+	// Serializer
+	out.EndOfLine()
+	out.WriteString("func (r *")
+	out.WriteString(structName)
+	out.WriteString(") Serialize(w io.Writer) error {")
+	out.EndOfLine()
+	out.Indent()
+	out.WriteLine("var err error")
+
+	// Counts
+	for _, s := range r.Structs {
+		f := poolField(r, s)
+		out.WriteString("err = runtime.WriteVarUint32(uint32(len(r.")
+		out.WriteString(f)
+		out.WriteString(")), w)")
+		out.EndOfLine()
+		abortOnError(out)
+	}
+	// Values
+	for _, s := range r.Structs {
+		f := poolField(r, s)
+		out.WriteString("for _, o := range r.")
+		out.WriteString(f)
+		out.WriteString(" {")
+		out.EndOfLine()
+		out.Indent()
+
+		for _, f := range s.Fields {
+			fn := fieldName(f)
+			path := "o." + fn
+			serialize(path, 0, f.Type, out)
+		}
+		out.Dedent()
+		out.WriteLine("}")
+	}
+	out.WriteLine("return nil")
+	out.Dedent()
+	out.WriteLine("}")
+
+	// Constructor
 	out.EndOfLine()
 	out.WriteString("func Create")
 	out.WriteString(structName)
@@ -288,6 +388,7 @@ func generateGoSrc(pkg string, regions []*runtime.RegionSchema, out *writer.Tabb
 	out.WriteLine("import (")
 	out.Indent()
 	out.WriteLine("\"github.com/ncbray/rommy/runtime\"")
+	out.WriteLine("\"io\"")
 	out.Dedent()
 	out.WriteLine(")")
 
@@ -387,7 +488,7 @@ func main() {
 	outf := buffered.OutputFile(filepath.Join(dir, base+".go"), 0644)
 	err = formatGoFile(tmpf, outf)
 	if err != nil {
-		println(err.Error())
+		println("formatting error - " + err.Error())
 		os.Exit(1)
 	}
 
