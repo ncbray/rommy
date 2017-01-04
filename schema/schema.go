@@ -7,8 +7,9 @@ import (
 )
 
 type Field struct {
-	Name string
-	Type string
+	PoolIndex int
+	Name      string
+	Type      string
 }
 
 func (s *Field) Schema() *runtime.StructSchema {
@@ -18,8 +19,9 @@ func (s *Field) Schema() *runtime.StructSchema {
 var fieldSchema = &runtime.StructSchema{Name: "Field", GoType: (*Field)(nil)}
 
 type Struct struct {
-	Name   string
-	Fields []*Field
+	PoolIndex int
+	Name      string
+	Fields    []*Field
 }
 
 func (s *Struct) Schema() *runtime.StructSchema {
@@ -29,8 +31,9 @@ func (s *Struct) Schema() *runtime.StructSchema {
 var structSchema = &runtime.StructSchema{Name: "Struct", GoType: (*Struct)(nil)}
 
 type Region struct {
-	Name   string
-	Struct []*Struct
+	PoolIndex int
+	Name      string
+	Struct    []*Struct
 }
 
 func (s *Region) Schema() *runtime.StructSchema {
@@ -40,7 +43,8 @@ func (s *Region) Schema() *runtime.StructSchema {
 var regionSchema = &runtime.StructSchema{Name: "Region", GoType: (*Region)(nil)}
 
 type Schemas struct {
-	Region []*Region
+	PoolIndex int
+	Region    []*Region
 }
 
 func (s *Schemas) Schema() *runtime.StructSchema {
@@ -62,24 +66,28 @@ func (r *TypeDeclRegion) Schema() *runtime.RegionSchema {
 
 func (r *TypeDeclRegion) AllocateField() *Field {
 	o := &Field{}
+	o.PoolIndex = len(r.FieldPool)
 	r.FieldPool = append(r.FieldPool, o)
 	return o
 }
 
 func (r *TypeDeclRegion) AllocateStruct() *Struct {
 	o := &Struct{}
+	o.PoolIndex = len(r.StructPool)
 	r.StructPool = append(r.StructPool, o)
 	return o
 }
 
 func (r *TypeDeclRegion) AllocateRegion() *Region {
 	o := &Region{}
+	o.PoolIndex = len(r.RegionPool)
 	r.RegionPool = append(r.RegionPool, o)
 	return o
 }
 
 func (r *TypeDeclRegion) AllocateSchemas() *Schemas {
 	o := &Schemas{}
+	o.PoolIndex = len(r.SchemasPool)
 	r.SchemasPool = append(r.SchemasPool, o)
 	return o
 }

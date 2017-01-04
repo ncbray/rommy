@@ -70,6 +70,7 @@ func generateStructDecls(r *runtime.RegionSchema, s *runtime.StructSchema, out *
 	out.WriteString(" struct {")
 	out.EndOfLine()
 	out.Indent()
+	out.WriteLine("PoolIndex int")
 	for _, f := range s.Fields {
 		out.WriteString(names.JoinCamelCase(names.SplitSnakeCase(f.Name), true))
 		out.WriteString(" ")
@@ -158,6 +159,12 @@ func generateRegionDecls(r *runtime.RegionSchema, out *writer.TabbedWriter) {
 		out.EndOfLine()
 
 		f := poolField(r, s)
+
+		out.WriteString("o.PoolIndex = len(r.")
+		out.WriteString(f)
+		out.WriteString(")")
+		out.EndOfLine()
+
 		out.WriteString("r.")
 		out.WriteString(f)
 		out.WriteString(" = append(r.")
