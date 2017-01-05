@@ -271,6 +271,83 @@ func CreateTypeDeclRegion() *TypeDeclRegion {
 
 var typeDeclRegionSchema = &runtime.RegionSchema{Name: "TypeDecl", GoType: (*TypeDeclRegion)(nil)}
 
+type TypeDeclCloner struct {
+	src        *TypeDeclRegion
+	dst        *TypeDeclRegion
+	fieldMap   []*Field
+	structMap  []*Struct
+	regionMap  []*Region
+	schemasMap []*Schemas
+}
+
+func CreateTypeDeclCloner(src *TypeDeclRegion, dst *TypeDeclRegion) *TypeDeclCloner {
+	c := &TypeDeclCloner{
+		src:        src,
+		dst:        dst,
+		fieldMap:   make([]*Field, len(src.FieldPool)),
+		structMap:  make([]*Struct, len(src.StructPool)),
+		regionMap:  make([]*Region, len(src.RegionPool)),
+		schemasMap: make([]*Schemas, len(src.SchemasPool)),
+	}
+	return c
+}
+
+func (c *TypeDeclCloner) CloneField(src *Field) *Field {
+	dst := c.fieldMap[src.PoolIndex]
+	if dst != nil {
+		return dst
+	}
+	dst = c.dst.AllocateField()
+	c.fieldMap[src.PoolIndex] = dst
+	dst.Name = src.Name
+	dst.Type = src.Type
+	return dst
+}
+
+func (c *TypeDeclCloner) CloneStruct(src *Struct) *Struct {
+	dst := c.structMap[src.PoolIndex]
+	if dst != nil {
+		return dst
+	}
+	dst = c.dst.AllocateStruct()
+	c.structMap[src.PoolIndex] = dst
+	dst.Name = src.Name
+	dst.Fields = make([]*Field, len(src.Fields))
+	for i0, _ := range src.Fields {
+		dst.Fields[i0] = c.CloneField(src.Fields[i0])
+	}
+	return dst
+}
+
+func (c *TypeDeclCloner) CloneRegion(src *Region) *Region {
+	dst := c.regionMap[src.PoolIndex]
+	if dst != nil {
+		return dst
+	}
+	dst = c.dst.AllocateRegion()
+	c.regionMap[src.PoolIndex] = dst
+	dst.Name = src.Name
+	dst.Struct = make([]*Struct, len(src.Struct))
+	for i0, _ := range src.Struct {
+		dst.Struct[i0] = c.CloneStruct(src.Struct[i0])
+	}
+	return dst
+}
+
+func (c *TypeDeclCloner) CloneSchemas(src *Schemas) *Schemas {
+	dst := c.schemasMap[src.PoolIndex]
+	if dst != nil {
+		return dst
+	}
+	dst = c.dst.AllocateSchemas()
+	c.schemasMap[src.PoolIndex] = dst
+	dst.Region = make([]*Region, len(src.Region))
+	for i0, _ := range src.Region {
+		dst.Region[i0] = c.CloneRegion(src.Region[i0])
+	}
+	return dst
+}
+
 func init() {
 
 	fieldSchema.Fields = []*runtime.FieldSchema{
