@@ -1,9 +1,7 @@
 package runtime
 
 import (
-	"encoding/binary"
 	"errors"
-	"io"
 	"math"
 )
 
@@ -191,108 +189,4 @@ func (s *Deserializer) ReadString() (string, error) {
 	} else {
 		return "", endOfData()
 	}
-}
-
-func ReadVarUint8(r io.ByteReader) (uint8, error) {
-	value, err := binary.ReadUvarint(r)
-	// TODO check range
-	return uint8(value), err
-}
-
-func ReadVarUint16(r io.ByteReader) (uint16, error) {
-	value, err := binary.ReadUvarint(r)
-	// TODO check range
-	return uint16(value), err
-}
-
-func ReadVarUint32(r io.ByteReader) (uint32, error) {
-	value, err := binary.ReadUvarint(r)
-	// TODO check range
-	return uint32(value), err
-}
-
-func ReadVarUint64(r io.ByteReader) (uint64, error) {
-	value, err := binary.ReadUvarint(r)
-	return value, err
-}
-
-func ReadVarInt8(r io.ByteReader) (int8, error) {
-	value, err := binary.ReadVarint(r)
-	// TODO check range
-	return int8(value), err
-}
-
-func ReadVarInt16(r io.ByteReader) (int16, error) {
-	value, err := binary.ReadVarint(r)
-	// TODO check range
-	return int16(value), err
-}
-
-func ReadVarInt32(r io.ByteReader) (int32, error) {
-	value, err := binary.ReadVarint(r)
-	// TODO check range
-	return int32(value), err
-}
-
-func ReadVarInt64(r io.ByteReader) (int64, error) {
-	value, err := binary.ReadVarint(r)
-	return value, err
-}
-
-func WriteVarUint8(value uint8, w io.Writer) error {
-	return WriteVarUint64(uint64(value), w)
-}
-
-func WriteVarUint16(value uint16, w io.Writer) error {
-	return WriteVarUint64(uint64(value), w)
-}
-
-func WriteVarUint32(value uint32, w io.Writer) error {
-	return WriteVarUint64(uint64(value), w)
-}
-
-func WriteVarUint64(value uint64, w io.Writer) error {
-	buf := make([]byte, 9)
-	n := binary.PutUvarint(buf, value)
-	_, err := w.Write(buf[:n])
-	return err
-}
-
-func WriteVarInt8(value int8, w io.Writer) error {
-	return WriteVarInt64(int64(value), w)
-}
-
-func WriteVarInt16(value int16, w io.Writer) error {
-	return WriteVarInt64(int64(value), w)
-}
-
-func WriteVarInt32(value int32, w io.Writer) error {
-	return WriteVarInt64(int64(value), w)
-}
-
-func WriteVarInt64(value int64, w io.Writer) error {
-	buf := make([]byte, 9)
-	n := binary.PutVarint(buf, value)
-	_, err := w.Write(buf[:n])
-	return err
-}
-
-func ReadString(r io.ByteReader) (string, error) {
-	_, err := ReadVarUint32(r)
-	if err != nil {
-		return "", err
-	}
-	//buf, err := r.Read
-	return "fake", nil
-}
-
-func WriteString(value string, w io.Writer) error {
-	b := []byte(value)
-	// TODO check for 4 GB strings
-	err := WriteVarUint32(uint32(len(b)), w)
-	if err != nil {
-		return nil
-	}
-	_, err = w.Write(b)
-	return err
 }
