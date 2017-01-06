@@ -60,6 +60,12 @@ type TypeDeclRegion struct {
 	SchemasPool []*Schemas
 }
 
+func CreateTypeDeclRegion() *TypeDeclRegion {
+	return &TypeDeclRegion{}
+}
+
+var typeDeclRegionSchema = &runtime.RegionSchema{Name: "TypeDecl", GoType: (*TypeDeclRegion)(nil)}
+
 func (r *TypeDeclRegion) Schema() *runtime.RegionSchema {
 	return typeDeclRegionSchema
 }
@@ -264,12 +270,6 @@ func (r *TypeDeclRegion) UnmarshalBinary(data []byte) error {
 	}
 	return nil
 }
-
-func CreateTypeDeclRegion() *TypeDeclRegion {
-	return &TypeDeclRegion{}
-}
-
-var typeDeclRegionSchema = &runtime.RegionSchema{Name: "TypeDecl", GoType: (*TypeDeclRegion)(nil)}
 
 type TypeDeclCloner struct {
 	src        *TypeDeclRegion
