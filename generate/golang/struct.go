@@ -246,7 +246,7 @@ func GenerateSource(pkg string, regions []*runtime.RegionSchema, out *writer.Tab
 	out.WriteString(pkg)
 	out.EndOfLine()
 	out.EndOfLine()
-	out.WriteLine("/* Generated with rommygen, do not edit by hand. */")
+	out.WriteLine("/* Generated with rommyc, do not edit by hand. */")
 	out.EndOfLine()
 
 	out.WriteLine("import (")

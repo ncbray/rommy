@@ -1,6 +1,6 @@
 package schema
 
-/* Generated with rommygen, do not edit by hand. */
+/* Generated with rommyc, do not edit by hand. */
 
 import (
 	"github.com/ncbray/rommy/runtime"

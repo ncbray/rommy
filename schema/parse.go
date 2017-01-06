@@ -5,7 +5,7 @@ import (
 	"github.com/ncbray/rommy/human"
 )
 
-//go:generate rommygen schema.rommy
+//go:generate rommyc schema.rommy --go_out .
 
 func ParseSchema(file string, data []byte) (*TypeDeclRegion, *Schemas, bool) {
 	region := CreateTypeDeclRegion()
