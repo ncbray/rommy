@@ -74,6 +74,8 @@ func reflectionType(t runtime.TypeSchema) reflect.Type {
 		return reflect.TypeOf(t.GoType)
 	case *runtime.ListSchema:
 		return reflect.SliceOf(reflectionType(t.Element))
+	case *runtime.StringSchema:
+		return reflect.TypeOf("")
 	default:
 		panic(t)
 	}

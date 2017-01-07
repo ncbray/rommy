@@ -16,7 +16,8 @@ func schemaFieldType(t runtime.TypeSchema) string {
 	case *runtime.StructSchema:
 		return structSchemaName(t)
 	case *runtime.ListSchema:
-		return schemaFieldType(t.Element) + ".List()"
+		// Precedence issues with "&" operator.
+		return "(" + schemaFieldType(t.Element) + ").List()"
 	default:
 		panic(t)
 	}
