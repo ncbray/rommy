@@ -68,7 +68,15 @@ func (s *Serializer) WriteIndex(index int, index_range int) error {
 	if index < 0 || index >= index_range {
 		return outOfRange()
 	}
-	s.WriteUint32(uint32(index))
+	if index_range <= 1 {
+		// Implicit
+	} else if index_range <= 1<<8 {
+		s.WriteUint8(uint8(index))
+	} else if index_range <= 1<<16 {
+		s.WriteUint16(uint16(index))
+	} else {
+		s.WriteUint32(uint32(index))
+	}
 	return nil
 }
 
@@ -154,8 +162,23 @@ func (s *Deserializer) ReadInt64() (int64, error) {
 }
 
 func (s *Deserializer) ReadIndex(index_range int) (int, error) {
-	p, err := s.ReadUint32()
-	v := int(p)
+	var v int
+	var err error
+	if index_range <= 1 {
+		v = 0
+	} else if index_range <= 1<<8 {
+		var p uint8
+		p, err = s.ReadUint8()
+		v = int(p)
+	} else if index_range <= 1<<16 {
+		var p uint16
+		p, err = s.ReadUint16()
+		v = int(p)
+	} else {
+		var p uint32
+		p, err = s.ReadUint32()
+		v = int(p)
+	}
 	if err != nil {
 		return 0, err
 	}
