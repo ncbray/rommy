@@ -18,6 +18,9 @@ func resolveType(region runtime.Region, node Expr, expected runtime.TypeSchema, 
 	case *String:
 		loc = node.Raw.Loc
 		actual = &runtime.StringSchema{}
+	case *Boolean:
+		loc = node.Loc
+		actual = &runtime.BooleanSchema{}
 	case *Integer:
 		var bits uint8 = 64
 		unsigned := false
@@ -76,6 +79,8 @@ func reflectionType(t runtime.TypeSchema) reflect.Type {
 		return reflect.SliceOf(reflectionType(t.Element))
 	case *runtime.StringSchema:
 		return reflect.TypeOf("")
+	case *runtime.BooleanSchema:
+		return reflect.TypeOf(false)
 	default:
 		panic(t)
 	}
@@ -103,6 +108,13 @@ func handleData(region runtime.Region, node Expr, expected runtime.TypeSchema, s
 		_, ok := actual.(*runtime.StringSchema)
 		if !ok {
 			status.Error(node.Raw.Loc, fmt.Sprintf("attempted to instantiate type %s as a string", actual.CanonicalName()))
+			return badValue, false
+		}
+		return reflect.ValueOf(node.Value), true
+	case *Boolean:
+		_, ok := actual.(*runtime.BooleanSchema)
+		if !ok {
+			status.Error(node.Loc, fmt.Sprintf("attempted to instantiate type %s as a bool", actual.CanonicalName()))
 			return badValue, false
 		}
 		return reflect.ValueOf(node.Value), true

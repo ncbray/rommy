@@ -51,6 +51,46 @@ func parseKeywordArg(state *parser.RuneParserState) (*KeywordArg, bool) {
 	return &KeywordArg{Name: name, Value: expr}, true
 }
 
+func parseBoolean(state *parser.RuneParserState) (*Boolean, bool) {
+	p := state.Position()
+	if state.Is('t') {
+		state.GetNext()
+		if !state.Is('r') {
+			return nil, false
+		}
+		state.GetNext()
+		if !state.Is('u') {
+			return nil, false
+		}
+		state.GetNext()
+		if !state.Is('e') {
+			return nil, false
+		}
+		state.GetNext()
+		return &Boolean{Loc: state.Slice(p).Loc, Value: true}, true
+	} else if state.Is('f') {
+		state.GetNext()
+		if !state.Is('a') {
+			return nil, false
+		}
+		state.GetNext()
+		if !state.Is('l') {
+			return nil, false
+		}
+		state.GetNext()
+		if !state.Is('s') {
+			return nil, false
+		}
+		state.GetNext()
+		if !state.Is('e') {
+			return nil, false
+		}
+		state.GetNext()
+		return &Boolean{Loc: state.Slice(p).Loc, Value: false}, true
+	}
+	return nil, false
+}
+
 func parseString(state *parser.RuneParserState) (*String, bool) {
 	begin := state.Position()
 	if !punc(state, '"') {
@@ -207,6 +247,9 @@ func parseExpr(state *parser.RuneParserState) (Expr, bool) {
 			state.GetNext()
 		}
 		return &Integer{Raw: state.Slice(begin)}, true
+	case state.Is('t') || state.Is('f'):
+		// HACK types that start with "t" or "f" will choke.
+		return parseBoolean(state)
 	case state.IsLetter() || state.Is('_'):
 		return parseStruct(state)
 	case state.Is('{'):

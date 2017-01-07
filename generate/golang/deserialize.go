@@ -29,6 +29,11 @@ func deserialize(path string, level int, r *runtime.RegionSchema, t runtime.Type
 		out.WriteString(", err = d.ReadString()")
 		out.EndOfLine()
 		abortDeserializeOnError(out)
+	case *runtime.BooleanSchema:
+		out.WriteString(path)
+		out.WriteString(", err = d.ReadBool()")
+		out.EndOfLine()
+		abortDeserializeOnError(out)
 	case *runtime.StructSchema:
 		f := poolField(r, t)
 		out.WriteString("index, err = d.ReadIndex(len(r.")

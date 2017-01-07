@@ -12,6 +12,8 @@ func goTypeRef(t runtime.TypeSchema) string {
 		return t.CanonicalName()
 	case *runtime.StringSchema:
 		return "string"
+	case *runtime.BooleanSchema:
+		return "bool"
 	case *runtime.StructSchema:
 		return "*" + t.Name
 	case *runtime.ListSchema:

@@ -15,6 +15,14 @@ type Integer struct {
 func (node *Integer) isExpr() {
 }
 
+type Boolean struct {
+	Loc   parser.Location
+	Value bool
+}
+
+func (node *Boolean) isExpr() {
+}
+
 type String struct {
 	Raw   parser.SourceString
 	Value string

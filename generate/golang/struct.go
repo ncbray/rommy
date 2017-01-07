@@ -13,6 +13,8 @@ func schemaFieldType(t runtime.TypeSchema) string {
 		return fmt.Sprintf("&runtime.IntegerSchema{Bits: %d, Unsigned: %v}", t.Bits, t.Unsigned)
 	case *runtime.StringSchema:
 		return "&runtime.StringSchema{}"
+	case *runtime.BooleanSchema:
+		return "&runtime.BooleanSchema{}"
 	case *runtime.StructSchema:
 		return structSchemaName(t)
 	case *runtime.ListSchema:

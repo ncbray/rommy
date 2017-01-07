@@ -29,6 +29,11 @@ func serialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSc
 		out.WriteString(path)
 		out.WriteString(")")
 		out.EndOfLine()
+	case *runtime.BooleanSchema:
+		out.WriteString("s.WriteBool(")
+		out.WriteString(path)
+		out.WriteString(")")
+		out.EndOfLine()
 	case *runtime.StructSchema:
 		out.WriteString("err = s.WriteIndex(")
 		out.WriteString(path)

@@ -25,6 +25,14 @@ func (s *Serializer) Data() []byte {
 	return s.data
 }
 
+func (s *Serializer) WriteBool(value bool) {
+	var i uint8 = 0
+	if value {
+		i = 1
+	}
+	s.data = append(s.data, i)
+}
+
 func (s *Serializer) WriteUint8(value uint8) {
 	s.data = append(s.data, value)
 }
@@ -99,6 +107,17 @@ type Deserializer struct {
 
 func MakeDeserializer(data []byte) *Deserializer {
 	return &Deserializer{data: data}
+}
+
+func (s *Deserializer) ReadBool() (bool, error) {
+	v, err := s.ReadUint8()
+	if err != nil {
+		return false, err
+	}
+	if v > 1 {
+		return false, outOfRange()
+	}
+	return v != 0, nil
 }
 
 func (s *Deserializer) ReadUint8() (uint8, error) {

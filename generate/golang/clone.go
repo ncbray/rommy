@@ -8,7 +8,7 @@ import (
 
 func generateValueClone(src_path string, dst_path string, level int, t runtime.TypeSchema, r *runtime.RegionSchema, out *writer.TabbedWriter) {
 	switch t := t.(type) {
-	case *runtime.IntegerSchema, *runtime.StringSchema:
+	case *runtime.IntegerSchema, *runtime.StringSchema, *runtime.BooleanSchema:
 		out.WriteString(dst_path)
 		out.WriteString(" = ")
 		out.WriteString(src_path)

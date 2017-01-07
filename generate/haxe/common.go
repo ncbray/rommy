@@ -35,6 +35,8 @@ func haxeTypeRef(t runtime.TypeSchema) string {
 		}
 	case *runtime.StringSchema:
 		return "String"
+	case *runtime.BooleanSchema:
+		return "Bool"
 	case *runtime.StructSchema:
 		return structName(t)
 	case *runtime.ListSchema:

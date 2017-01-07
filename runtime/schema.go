@@ -31,6 +31,26 @@ func (s *StringSchema) CanonicalName() string {
 	return "string"
 }
 
+type BooleanSchema struct {
+	listCache *ListSchema
+}
+
+func (s *BooleanSchema) List() *ListSchema {
+	if s.listCache == nil {
+		s.listCache = &ListSchema{Element: s}
+	}
+	return s.listCache
+}
+
+func (s *BooleanSchema) CanHold(other TypeSchema) bool {
+	_, ok := other.(*BooleanSchema)
+	return ok
+}
+
+func (s *BooleanSchema) CanonicalName() string {
+	return "bool"
+}
+
 type IntegerSchema struct {
 	Bits      uint8
 	Unsigned  bool

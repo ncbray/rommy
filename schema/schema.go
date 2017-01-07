@@ -357,16 +357,16 @@ func init() {
 
 	structSchema.Fields = []*runtime.FieldSchema{
 		{Name: "name", Type: &runtime.StringSchema{}},
-		{Name: "fields", Type: fieldSchema.List()},
+		{Name: "fields", Type: (fieldSchema).List()},
 	}
 
 	regionSchema.Fields = []*runtime.FieldSchema{
 		{Name: "name", Type: &runtime.StringSchema{}},
-		{Name: "struct", Type: structSchema.List()},
+		{Name: "struct", Type: (structSchema).List()},
 	}
 
 	schemasSchema.Fields = []*runtime.FieldSchema{
-		{Name: "region", Type: regionSchema.List()},
+		{Name: "region", Type: (regionSchema).List()},
 	}
 
 	typeDeclRegionSchema.Structs = []*runtime.StructSchema{

@@ -40,6 +40,7 @@ func Resolve(schemas *Schemas) []*runtime.RegionSchema {
 
 		types := map[string]runtime.TypeSchema{
 			"string": &runtime.StringSchema{},
+			"bool":   &runtime.BooleanSchema{},
 		}
 		for _, unsigned := range []bool{false, true} {
 			for _, bits := range []uint8{8, 16, 32, 64} {
