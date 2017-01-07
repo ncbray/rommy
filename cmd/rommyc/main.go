@@ -6,6 +6,7 @@ import (
 	"github.com/ncbray/compilerutil/fs"
 	"github.com/ncbray/compilerutil/writer"
 	"github.com/ncbray/rommy/generate/golang"
+	"github.com/ncbray/rommy/generate/haxe"
 	"github.com/ncbray/rommy/runtime"
 	"github.com/ncbray/rommy/schema"
 	"go/format"
@@ -72,12 +73,22 @@ func main() {
 
 	var input string
 	var go_out string
+	var haxe_out string
+	var haxe_package string
 
 	app := cmdline.MakeApp("rommyc")
 	app.Flags([]*cmdline.Flag{
 		{
 			Long:  "go_out",
 			Value: outputFile.Set(&go_out),
+		},
+		{
+			Long:  "haxe_out",
+			Value: outputFile.Set(&haxe_out),
+		},
+		{
+			Long:  "haxe_package",
+			Value: cmdline.String.Set(&haxe_package),
 		},
 	})
 	app.RequiredArgs([]*cmdline.Argument{
@@ -88,9 +99,21 @@ func main() {
 	})
 	app.Run(os.Args[1:])
 
-	if go_out == "" {
+	if go_out == "" && haxe_out == "" {
 		println("ERROR no outputs specified for " + input)
 		os.Exit(1)
+	}
+
+	if haxe_out != "" {
+		if haxe_package == "" {
+			println("ERROR haxe package not specified")
+			os.Exit(1)
+		}
+	} else {
+		if haxe_package != "" {
+			println("ERROR haxe package specified when not generating haxe")
+			os.Exit(1)
+		}
 	}
 
 	data, err := ioutil.ReadFile(input)
@@ -114,7 +137,17 @@ func main() {
 	defer tmp.Cleanup()
 	buffered := fs.MakeBufferedFileSystem(tmp)
 
-	generateGo(input, regions, go_out, buffered)
+	if go_out != "" {
+		generateGo(input, regions, go_out, buffered)
+	}
+
+	if haxe_out != "" {
+		err = haxe.GenerateSources(input, regions, haxe_out, haxe_package, buffered)
+		if err != nil {
+			println(err.Error())
+			os.Exit(1)
+		}
+	}
 
 	buffered.Commit()
 }
