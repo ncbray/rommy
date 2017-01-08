@@ -235,6 +235,29 @@ func TestInt64(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestUvarint64(t *testing.T) {
+	s := MakeSerializer()
+	expected := []uint64{}
+	for i := 0; i < 1024; i++ {
+		expected = append(expected, uint64(rand.Uint32())|(uint64(rand.Uint32())<<32))
+	}
+	for _, value := range expected {
+		s.WriteUvarint(value)
+	}
+	data := s.Data()
+	d := MakeDeserializer(data)
+	for _, value := range expected {
+		actual, err := d.ReadUvarint()
+		assert.Nil(t, err)
+		assert.Equal(t, value, actual)
+		if t.Failed() {
+			return
+		}
+	}
+	_, err := d.ReadUint64()
+	assert.NotNil(t, err)
+}
+
 func TestString(t *testing.T) {
 	s := MakeSerializer()
 	expected := []string{"foo", "bar", "baz"}

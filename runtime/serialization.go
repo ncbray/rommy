@@ -72,6 +72,14 @@ func (s *Serializer) WriteInt64(value int64) {
 	s.WriteUint64(uint64(value))
 }
 
+func (s *Serializer) WriteUvarint(value uint64) {
+	for value >= 0x80 {
+		s.data = append(s.data, byte(value)|0x80)
+		value >>= 7
+	}
+	s.data = append(s.data, byte(value))
+}
+
 func (s *Serializer) WriteIndex(index int, index_range int) error {
 	if index < 0 || index >= index_range {
 		return outOfRange()
@@ -92,12 +100,12 @@ func (s *Serializer) WriteCount(index int) error {
 	if index < 0 || index > math.MaxInt32 {
 		return outOfRange()
 	}
-	s.WriteUint32(uint32(index))
+	s.WriteUvarint(uint64(index))
 	return nil
 }
 
 func (s *Serializer) WriteString(value string) {
-	s.WriteUint32(uint32(len(value)))
+	s.WriteCount(len(value))
 	s.data = append(s.data, value...)
 }
 
@@ -180,6 +188,27 @@ func (s *Deserializer) ReadInt64() (int64, error) {
 	return int64(v), err
 }
 
+func (s *Deserializer) ReadUvarint() (uint64, error) {
+	var value uint64
+	var bits uint
+	for {
+		b, err := s.ReadUint8()
+		if err != nil {
+			return 0, err
+		}
+		if b < 0x80 {
+			remaining_bits := 64 - bits
+			if remaining_bits < 0 || remaining_bits < 7 && b >= 1<<remaining_bits {
+				return 0, outOfRange()
+			}
+			value |= uint64(b&0x7f) << bits
+			return value, nil
+		}
+		value |= uint64(b&0x7f) << bits
+		bits += 7
+	}
+}
+
 func (s *Deserializer) ReadIndex(index_range int) (int, error) {
 	var v int
 	var err error
@@ -208,7 +237,7 @@ func (s *Deserializer) ReadIndex(index_range int) (int, error) {
 }
 
 func (s *Deserializer) ReadCount() (int, error) {
-	p, err := s.ReadUint32()
+	p, err := s.ReadUvarint()
 	if err != nil {
 		return 0, err
 	}
@@ -219,7 +248,7 @@ func (s *Deserializer) ReadCount() (int, error) {
 }
 
 func (s *Deserializer) ReadString() (string, error) {
-	l, err := s.ReadUint32()
+	l, err := s.ReadCount()
 	if err != nil {
 		return "", err
 	}
