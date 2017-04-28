@@ -1,10 +1,11 @@
 package golang
 
 import (
+	"strconv"
+
 	"github.com/ncbray/compilerutil/names"
 	"github.com/ncbray/compilerutil/writer"
 	"github.com/ncbray/rommy/runtime"
-	"strconv"
 )
 
 func abortSerializeOnError(out *writer.TabbedWriter) {
@@ -18,6 +19,13 @@ func abortSerializeOnError(out *writer.TabbedWriter) {
 func serialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSchema, out *writer.TabbedWriter) {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
+		out.WriteString("s.Write")
+		out.WriteString(names.Capitalize(t.CanonicalName()))
+		out.WriteString("(")
+		out.WriteString(path)
+		out.WriteString(")")
+		out.EndOfLine()
+	case *runtime.FloatSchema:
 		out.WriteString("s.Write")
 		out.WriteString(names.Capitalize(t.CanonicalName()))
 		out.WriteString("(")

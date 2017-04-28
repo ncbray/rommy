@@ -2,15 +2,18 @@ package golang
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/ncbray/compilerutil/writer"
 	"github.com/ncbray/rommy/runtime"
-	"strconv"
 )
 
 func schemaFieldType(t runtime.TypeSchema) string {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
 		return fmt.Sprintf("&runtime.IntegerSchema{Bits: %d, Unsigned: %v}", t.Bits, t.Unsigned)
+	case *runtime.FloatSchema:
+		return fmt.Sprintf("&runtime.FloatSchema{Bits: %d}", t.Bits)
 	case *runtime.StringSchema:
 		return "&runtime.StringSchema{}"
 	case *runtime.BooleanSchema:

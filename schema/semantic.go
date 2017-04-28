@@ -49,6 +49,11 @@ func Resolve(schemas *Schemas) []*runtime.RegionSchema {
 			}
 		}
 
+		for _, bits := range []uint8{32, 64} {
+			t := &runtime.FloatSchema{Bits: bits}
+			types[t.CanonicalName()] = t
+		}
+
 		struct_work := []structWork{}
 		for _, s := range r.Struct {
 			ss := &runtime.StructSchema{

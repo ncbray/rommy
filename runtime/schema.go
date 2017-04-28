@@ -1,8 +1,9 @@
 package runtime
 
 import (
-	"github.com/ncbray/compilerutil/names"
 	"strconv"
+
+	"github.com/ncbray/compilerutil/names"
 )
 
 type TypeSchema interface {
@@ -78,6 +79,30 @@ func (s *IntegerSchema) CanonicalName() string {
 		name = "u" + name
 	}
 	return name
+}
+
+type FloatSchema struct {
+	Bits      uint8
+	listCache *ListSchema
+}
+
+func (s *FloatSchema) List() *ListSchema {
+	if s.listCache == nil {
+		s.listCache = &ListSchema{Element: s}
+	}
+	return s.listCache
+}
+
+func (s *FloatSchema) CanHold(other TypeSchema) bool {
+	os, ok := other.(*FloatSchema)
+	if !ok {
+		return false
+	}
+	return s.Bits == os.Bits
+}
+
+func (s *FloatSchema) CanonicalName() string {
+	return "float" + strconv.FormatInt(int64(s.Bits), 10)
 }
 
 type FieldSchema struct {

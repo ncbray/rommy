@@ -1,12 +1,13 @@
 package haxe
 
 import (
+	"path/filepath"
+	"strconv"
+
 	"github.com/ncbray/compilerutil/fs"
 	"github.com/ncbray/compilerutil/names"
 	"github.com/ncbray/compilerutil/writer"
 	"github.com/ncbray/rommy/runtime"
-	"path/filepath"
-	"strconv"
 )
 
 func generateStruct(pkg string, r *runtime.RegionSchema, s *runtime.StructSchema, out *writer.TabbedWriter) {
@@ -45,6 +46,9 @@ func abortDeserializeOnError(out *writer.TabbedWriter) {
 func deserialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSchema, out *writer.TabbedWriter) {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
+		out.WriteLine(path + " = d.read" + names.Capitalize(t.CanonicalName()) + "();")
+		abortDeserializeOnError(out)
+	case *runtime.FloatSchema:
 		out.WriteLine(path + " = d.read" + names.Capitalize(t.CanonicalName()) + "();")
 		abortDeserializeOnError(out)
 	case *runtime.StringSchema:

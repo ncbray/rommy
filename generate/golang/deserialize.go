@@ -1,10 +1,11 @@
 package golang
 
 import (
+	"strconv"
+
 	"github.com/ncbray/compilerutil/names"
 	"github.com/ncbray/compilerutil/writer"
 	"github.com/ncbray/rommy/runtime"
-	"strconv"
 )
 
 func abortDeserializeOnError(out *writer.TabbedWriter) {
@@ -18,6 +19,13 @@ func abortDeserializeOnError(out *writer.TabbedWriter) {
 func deserialize(path string, level int, r *runtime.RegionSchema, t runtime.TypeSchema, out *writer.TabbedWriter) {
 	switch t := t.(type) {
 	case *runtime.IntegerSchema:
+		out.WriteString(path)
+		out.WriteString(", err = d.Read")
+		out.WriteString(names.Capitalize(t.CanonicalName()))
+		out.WriteString("()")
+		out.EndOfLine()
+		abortDeserializeOnError(out)
+	case *runtime.FloatSchema:
 		out.WriteString(path)
 		out.WriteString(", err = d.Read")
 		out.WriteString(names.Capitalize(t.CanonicalName()))

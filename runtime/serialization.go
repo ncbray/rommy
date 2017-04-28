@@ -60,6 +60,10 @@ func (s *Serializer) WriteInt32(value int32) {
 	s.WriteUint32(uint32(value))
 }
 
+func (s *Serializer) WriteFloat32(value float32) {
+	s.WriteUint32(math.Float32bits(value))
+}
+
 func (s *Serializer) WriteUint64(value uint64) {
 	s.data = append(s.data,
 		uint8(value&0xff), uint8((value>>8)&0xff),
@@ -70,6 +74,10 @@ func (s *Serializer) WriteUint64(value uint64) {
 
 func (s *Serializer) WriteInt64(value int64) {
 	s.WriteUint64(uint64(value))
+}
+
+func (s *Serializer) WriteFloat64(value float64) {
+	s.WriteUint64(math.Float64bits(value))
 }
 
 func (s *Serializer) WriteUvarint(value uint64) {
@@ -173,6 +181,11 @@ func (s *Deserializer) ReadInt32() (int32, error) {
 	return int32(v), err
 }
 
+func (s *Deserializer) ReadFloat32() (float32, error) {
+	v, err := s.ReadUint32()
+	return math.Float32frombits(v), err
+}
+
 func (s *Deserializer) ReadUint64() (uint64, error) {
 	if len(s.data) >= 8 {
 		b := uint64(s.data[0]) | (uint64(s.data[1]) << 8) | (uint64(s.data[2]) << 16) | (uint64(s.data[3]) << 24) | (uint64(s.data[4]) << 32) | (uint64(s.data[5]) << 40) | (uint64(s.data[6]) << 48) | (uint64(s.data[7]) << 56)
@@ -186,6 +199,11 @@ func (s *Deserializer) ReadUint64() (uint64, error) {
 func (s *Deserializer) ReadInt64() (int64, error) {
 	v, err := s.ReadUint64()
 	return int64(v), err
+}
+
+func (s *Deserializer) ReadFloat64() (float64, error) {
+	v, err := s.ReadUint64()
+	return math.Float64frombits(v), err
 }
 
 func (s *Deserializer) ReadUvarint() (uint64, error) {

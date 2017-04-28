@@ -10,6 +10,9 @@ func goTypeRef(t runtime.TypeSchema) string {
 	case *runtime.IntegerSchema:
 		// HACK canonical name matches Go type.
 		return t.CanonicalName()
+	case *runtime.FloatSchema:
+		// HACK canonical name matches Go type.
+		return t.CanonicalName()
 	case *runtime.StringSchema:
 		return "string"
 	case *runtime.BooleanSchema:

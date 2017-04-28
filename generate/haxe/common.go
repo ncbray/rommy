@@ -33,6 +33,8 @@ func haxeTypeRef(t runtime.TypeSchema) string {
 		} else {
 			return "Int"
 		}
+	case *runtime.FloatSchema:
+		return "Float"
 	case *runtime.StringSchema:
 		return "String"
 	case *runtime.BooleanSchema:

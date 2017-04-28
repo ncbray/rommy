@@ -1,10 +1,11 @@
 package runtime
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUint8(t *testing.T) {
@@ -187,6 +188,27 @@ func TestInt32(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestFloat32(t *testing.T) {
+	s := MakeSerializer()
+	expected := []float32{0.0, -1.0, 1.0, 1.0 / 3, 1.1e20}
+	for _, value := range expected {
+		s.WriteFloat32(value)
+	}
+	data := s.Data()
+	assert.Equal(t, len(expected)*4, len(data))
+	d := MakeDeserializer(data)
+	for _, value := range expected {
+		actual, err := d.ReadFloat32()
+		assert.Nil(t, err)
+		assert.Equal(t, value, actual)
+		if t.Failed() {
+			return
+		}
+	}
+	_, err := d.ReadFloat32()
+	assert.NotNil(t, err)
+}
+
 func TestUint64(t *testing.T) {
 	s := MakeSerializer()
 	expected := []uint64{}
@@ -232,6 +254,27 @@ func TestInt64(t *testing.T) {
 		}
 	}
 	_, err := d.ReadInt64()
+	assert.NotNil(t, err)
+}
+
+func TestFloat64(t *testing.T) {
+	s := MakeSerializer()
+	expected := []float64{0.0, -1.0, 1.0, 1.0 / 3, 1.1e20}
+	for _, value := range expected {
+		s.WriteFloat64(value)
+	}
+	data := s.Data()
+	assert.Equal(t, len(expected)*8, len(data))
+	d := MakeDeserializer(data)
+	for _, value := range expected {
+		actual, err := d.ReadFloat64()
+		assert.Nil(t, err)
+		assert.Equal(t, value, actual)
+		if t.Failed() {
+			return
+		}
+	}
+	_, err := d.ReadFloat64()
 	assert.NotNil(t, err)
 }
 
